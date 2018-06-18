@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 638239e4e0b60154586bc5001728fe79, type: 3}
+  m_Name: New Test Node Graph
+  m_EditorClassIdentifier: 
+  nodes:
+  - nodeGraph: {fileID: 11400000}
+    nodeObject: {fileID: 114714895515739200}
+    graphPosition: {x: 359, y: 369}
+    isExpanded: 1
+--- !u!114 &114714895515739200
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 966146b8337cc1b478d419aa83f8524a, type: 3}
+  m_Name: TestScriptableObject
+  m_EditorClassIdentifier: 
+  d:
+  - nodes:
+    - {fileID: 114714895515739200}
+  - nodes:
+    - {fileID: 114714895515739200}
+  e: []
