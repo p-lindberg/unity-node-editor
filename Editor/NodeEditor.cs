@@ -14,6 +14,8 @@ public class NodeEditor : ZoomableEditorWindow
 
 	Vector2 currentMousePosition;
 
+	Dictionary<NodeGraph.NodeData, NodeView> nodeViews = new Dictionary<NodeGraph.NodeData, NodeView>();
+
 	static NodeEditorSettings settings;
 
 	public static NodeEditorSettings Settings
@@ -75,123 +77,28 @@ public class NodeEditor : ZoomableEditorWindow
 		return false;
 	}
 
+	NodeView GetNodeView(NodeGraph.NodeData nodeData)
+	{
+		NodeView nodeView;
+		if (nodeViews.TryGetValue(nodeData, out nodeView))
+			return nodeView;
+
+		var newNodeView = new NodeView(nodeData);
+		nodeViews[nodeData] = newNodeView;
+		return newNodeView;
+	}
+
 	protected override void DrawZoomAreaContents(Vector2 origin)
 	{
 		if (CurrentTarget != null && Settings != null)
 		{
 			BeginWindows();
-			int i = 0;
-			foreach (var nodeData in CurrentTarget.Nodes)
-			{
-				var position = origin + nodeData.graphPosition;
 
-				var rect = new Rect(Mathf.RoundToInt(position.x), Mathf.RoundToInt(position.y), 200, 60);
-				var newRect = GUILayout.Window(i, rect, (id) =>
-				{
-					HandleNodeEvents(nodeData.nodeObject);
-					DrawNode(nodeData.nodeObject, ref nodeData.isExpanded);
-					GUI.DragWindow(new Rect(0, 0, 200, 30));
-				}, new GUIContent(), Settings.NodeGUIStyle);
-				i++;
-				nodeData.graphPosition = newRect.position - origin;
-			}
+			foreach (var nodeData in CurrentTarget.Nodes)
+				GetNodeView(nodeData).DrawNode(origin);
+
 			EndWindows();
 		}
-	}
-
-	void HandleNodeEvents(UnityEngine.Object node)
-	{
-		if (Event.current.type == EventType.MouseDown && Event.current.button == 0)
-			Selection.activeObject = node;
-		else if (Event.current.type == EventType.MouseDown && Event.current.button == 1)
-		{
-			var genericMenu = new GenericMenu();
-			genericMenu.AddItem(new GUIContent("Delete"), false, () =>
-			{
-				CurrentTarget.DeleteNode(node);
-			});
-			genericMenu.ShowAsContext();
-			Event.current.Use();
-		}
-	}
-
-	void DrawNode(UnityEngine.Object node, ref bool isExpanded)
-	{
-		EditorGUILayout.BeginVertical();
-		EditorGUIUtility.labelWidth = Settings.DefaultLabelWidth;
-		EditorGUILayout.LabelField(node.name, Settings.NodeHeaderStyle);
-
-		var serializedObject = new SerializedObject(node);
-		serializedObject.Update();
-
-		var iterator = serializedObject.GetIterator();
-		iterator.NextVisible(true);
-
-		EditorGUILayout.BeginHorizontal();
-		GUILayout.FlexibleSpace();
-		isExpanded = EditorGUILayout.Toggle(isExpanded, Settings.NodeContentToggleStyle);
-		GUILayout.FlexibleSpace();
-		EditorGUILayout.EndHorizontal();
-		if (isExpanded)
-			DrawPropertiesRecursive(iterator);
-
-		serializedObject.ApplyModifiedProperties();
-		EditorGUILayout.EndVertical();
-	}
-
-	bool DrawPropertiesRecursive(SerializedProperty iterator)
-	{
-		bool next = iterator.NextVisible(true);
-		var depth = iterator.depth;
-		while (next && iterator.depth >= depth)
-		{
-			if (iterator.hasVisibleChildren)
-			{
-				if (Settings.IndentNested)
-					EditorGUI.indentLevel = iterator.depth;
-
-				iterator.isExpanded = EditorGUILayout.Foldout(iterator.isExpanded, iterator.displayName, true);
-
-				if (Settings.IndentHeadersOnly)
-					EditorGUI.indentLevel = 0;
-
-				if (iterator.isExpanded)
-				{
-					EditorGUILayout.BeginVertical(Settings.SeparatorStyle);
-
-					if (DrawPropertiesRecursive(iterator))
-					{
-						EditorGUILayout.EndVertical();
-						continue;
-					}
-					else
-					{
-						EditorGUILayout.EndVertical();
-						return false;
-					}
-				}
-			}
-
-			else
-			{
-				EditorGUILayout.PropertyField(iterator, false);
-				if (iterator.propertyType == SerializedPropertyType.ObjectReference)
-				{
-					var propertyType = NodeEditorUtilities.GetPropertyType(iterator);
-					var nodeAttributes = propertyType.GetCustomAttributes(typeof(NodeAttribute), true).Cast<NodeAttribute>();
-					if (nodeAttributes.Any(x => x.GraphType == CurrentTarget.GetType()))
-					{
-						// Link!
-					}
-				}
-
-				var lastRect = GUILayoutUtility.GetLastRect();
-			}
-
-			next = iterator.NextVisible(iterator.isExpanded);
-		}
-
-		return next;
 	}
 
 	public override void OnHandleEvents()

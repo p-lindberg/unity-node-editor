@@ -19,6 +19,7 @@ public class NodeGraph : ScriptableObject
 	[System.Serializable]
 	public class NodeData
 	{
+		public int id;
 		public NodeGraph nodeGraph;
 		public UnityEngine.Object nodeObject;
 		public Vector2 graphPosition;
@@ -40,7 +41,7 @@ public class NodeGraph : ScriptableObject
 		node.name = name;
 		//node.hideFlags = HideFlags.HideInHierarchy;
 
-		nodes.Add(new NodeData() { nodeGraph = this, nodeObject = node, graphPosition = position });
+		nodes.Add(new NodeData() { id = nodes.Count, nodeGraph = this, nodeObject = node, graphPosition = position });
 
 		AssetDatabase.AddObjectToAsset(node, this);
 		EditorUtility.SetDirty(this);

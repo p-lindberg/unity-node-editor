@@ -13,12 +13,12 @@ public class NodeView
 		this.nodeData = nodeData;
 	}
 
-	public virtual void DrawNodeExterior(Vector2 origin)
+	public virtual void DrawNode(Vector2 origin)
 	{
 		var position = origin + nodeData.graphPosition;
 
 		var rect = new Rect(Mathf.RoundToInt(position.x), Mathf.RoundToInt(position.y), 200, 60);
-		var newRect = GUILayout.Window(0, rect, (id) =>
+		var newRect = GUILayout.Window(nodeData.id, rect, (id) =>
 		{
 			HandleEvents();
 			DrawNodeContents();
