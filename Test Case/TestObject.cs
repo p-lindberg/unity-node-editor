@@ -6,5 +6,12 @@ using UnityEngine;
 [CreateAssetMenu(menuName = "Scriptable Objects/Test Object")]
 public class TestObject : ScriptableObject
 {
-	[SerializeField] TestScriptableObject othernode;
+	[System.Serializable]
+	public class TestClass
+	{
+		public TestObject otherTestObject;
+	}
+
+	[SerializeField] List<TestClass> testClasses;
+	[SerializeField] TestScriptableObject otherNode;
 }
