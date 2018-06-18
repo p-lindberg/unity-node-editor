@@ -114,7 +114,8 @@ public class NodeEditor : ZoomableEditorWindow
 				if (currentGraphNodeAttribute != null)
 					genericMenu.AddItem(new GUIContent("Create/" + (currentGraphNodeAttribute.MenuName ?? derivedType.Name)), false, () =>
 					{
-						CurrentTarget.CreateNode(derivedType, ConvertScreenCoordsToZoomCoords(mousePosition), derivedType.Name);
+						var nodePosition = NodeEditorUtilities.RoundVectorToIntegerValues(ConvertScreenCoordsToZoomCoords(mousePosition));
+						CurrentTarget.CreateNode(derivedType, nodePosition, derivedType.Name);
 					});
 			}
 

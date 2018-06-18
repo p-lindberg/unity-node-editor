@@ -8,6 +8,18 @@ using System.Linq;
 
 public static class NodeEditorUtilities
 {
+	public static Type GetPropertyType(SerializedProperty property)
+	{
+		var typeName = GetPropertyTypeName(property);
+		var type = GetTypeByName(typeName);
+		if (type == null)
+			type = GetTypeByName("UnityEngine." + typeName);
+
+		// SerializedProperty.type does not include the namespace, at least for Unity types.
+
+		return type;
+	}
+
 	public static string GetPropertyTypeName(SerializedProperty property)
 	{
 		var type = property.type;
@@ -17,23 +29,14 @@ public static class NodeEditorUtilities
 		return type;
 	}
 
-	public static Type GetPropertyType(SerializedProperty property)
+	public static Type GetTypeByName(string typeName)
 	{
 		var loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies();
-		var matchingTypes = loadedAssemblies.Select(x => x.GetType(GetPropertyTypeName(property))).Where(x => x != null);
-		var matches = matchingTypes.Count();
-		if (matches == 0)
-		{
-			Debug.LogError("Could not find type of property " + property.type);
-			return null;
-		}
-		else if (matches == 1)
+		HashSet<Type> matchingTypes = new HashSet<Type>(loadedAssemblies.Select(x => x.GetType(typeName)).Where(x => x != null));
+		if (matchingTypes.Count == 1)
 			return matchingTypes.First();
 		else
-		{
-			Debug.LogError("GetPropertyType inconclusive: more than one type matches the property " + property.type);
 			return null;
-		}
 	}
 
 	public static List<Type> GetDerivedTypes<T>(bool includeBase, bool includeAbstract)
@@ -57,5 +60,10 @@ public static class NodeEditorUtilities
 			}
 
 		return derivedTypes;
+	}
+
+	public static Vector2 RoundVectorToIntegerValues(Vector2 vector)
+	{
+		return new Vector2(Mathf.RoundToInt(vector.x), Mathf.RoundToInt(vector.y));
 	}
 }

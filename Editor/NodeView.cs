@@ -6,7 +6,18 @@ using System.Linq;
 
 public class NodeView
 {
+	public class NodeReference
+	{
+		public string propertyPath;
+		public float height;
+	}
+
 	NodeGraph.NodeData nodeData;
+	float currentPropertyHeight;
+	bool dragging;
+	Stack<NodeReference> nodeReferences = new Stack<NodeReference>();
+	Rect windowRect = new Rect(0, 0, 0, 0);
+	Vector2 windowSize;
 
 	public NodeView(NodeGraph.NodeData nodeData)
 	{
@@ -15,23 +26,35 @@ public class NodeView
 
 	public virtual void DrawNode(Vector2 origin)
 	{
-		var position = origin + nodeData.graphPosition;
-
-		var rect = new Rect(Mathf.RoundToInt(position.x), Mathf.RoundToInt(position.y), 200, 60);
-		var newRect = GUILayout.Window(nodeData.id, rect, (id) =>
+		windowRect.position = origin + nodeData.graphPosition;
+		var newRect = GUILayout.Window(nodeData.id, windowRect, (id) =>
 		{
 			HandleEvents();
 			DrawNodeContents();
-			GUI.DragWindow(new Rect(0, 0, 200, 30));
+			GUI.DragWindow();
 		}, new GUIContent(), NodeEditor.Settings.NodeGUIStyle);
-		nodeData.graphPosition = newRect.position - origin;
+
+		windowSize = newRect.size;
+
+		while (nodeReferences.Count > 0)
+			DrawConnector(nodeReferences.Pop());
+
+		if (dragging)
+			nodeData.graphPosition = NodeEditorUtilities.RoundVectorToIntegerValues(newRect.position - origin);
 	}
 
-	public virtual void DrawNodeContents()
+	protected virtual void DrawConnector(NodeReference nodeReference)
+	{
+		GUI.Box(new Rect(new Vector2(windowRect.position.x, windowRect.position.y + nodeReference.height), new Vector2(windowSize.x + 30f, 10f)), "");
+	}
+
+	protected virtual void DrawNodeContents()
 	{
 		EditorGUILayout.BeginVertical();
 		EditorGUIUtility.labelWidth = NodeEditor.Settings.DefaultLabelWidth;
 		EditorGUILayout.LabelField(nodeData.nodeObject.name, NodeEditor.Settings.NodeHeaderStyle);
+
+		currentPropertyHeight += EditorGUIUtility.singleLineHeight + 3 * EditorGUIUtility.standardVerticalSpacing;
 
 		var serializedObject = new SerializedObject(nodeData.nodeObject);
 		serializedObject.Update();
@@ -44,11 +67,20 @@ public class NodeView
 		nodeData.isExpanded = EditorGUILayout.Toggle(nodeData.isExpanded, NodeEditor.Settings.NodeContentToggleStyle);
 		GUILayout.FlexibleSpace();
 		EditorGUILayout.EndHorizontal();
+
+		currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
+
 		if (nodeData.isExpanded)
+		{
+			EditorGUILayout.BeginVertical(NodeEditor.Settings.SeparatorStyle);
 			DrawPropertiesRecursive(iterator);
+			EditorGUILayout.EndVertical();
+		}
 
 		serializedObject.ApplyModifiedProperties();
 		EditorGUILayout.EndVertical();
+
+		currentPropertyHeight = 0f;
 	}
 
 	protected bool DrawPropertiesRecursive(SerializedProperty iterator)
@@ -93,11 +125,11 @@ public class NodeView
 					var nodeAttributes = propertyType.GetCustomAttributes(typeof(NodeAttribute), true).Cast<NodeAttribute>();
 					if (nodeAttributes.Any(x => x.GraphType == nodeData.nodeGraph.GetType()))
 					{
-						// Link!
+						nodeReferences.Push(new NodeReference() { propertyPath = iterator.propertyPath, height = currentPropertyHeight });
 					}
 				}
 
-				var lastRect = GUILayoutUtility.GetLastRect();
+				currentPropertyHeight += EditorGUI.GetPropertyHeight(iterator) + EditorGUIUtility.standardVerticalSpacing;
 			}
 
 			next = iterator.NextVisible(iterator.isExpanded);
@@ -120,5 +152,7 @@ public class NodeView
 			genericMenu.ShowAsContext();
 			Event.current.Use();
 		}
+
+		dragging = Event.current.type == EventType.MouseDrag;
 	}
 }
