@@ -89,7 +89,7 @@ public class NodeView
 				EditorGUILayout.PropertyField(iterator, false);
 				if (iterator.propertyType == SerializedPropertyType.ObjectReference)
 				{
-					var propertyType = EditorUtilities.GetPropertyType(iterator);
+					var propertyType = NodeEditorUtilities.GetPropertyType(iterator);
 					var nodeAttributes = propertyType.GetCustomAttributes(typeof(NodeAttribute), true).Cast<NodeAttribute>();
 					if (nodeAttributes.Any(x => x.GraphType == nodeData.nodeGraph.GetType()))
 					{

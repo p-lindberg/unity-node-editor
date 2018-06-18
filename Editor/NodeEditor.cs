@@ -177,7 +177,7 @@ public class NodeEditor : ZoomableEditorWindow
 				EditorGUILayout.PropertyField(iterator, false);
 				if (iterator.propertyType == SerializedPropertyType.ObjectReference)
 				{
-					var propertyType = EditorUtilities.GetPropertyType(iterator);
+					var propertyType = NodeEditorUtilities.GetPropertyType(iterator);
 					var nodeAttributes = propertyType.GetCustomAttributes(typeof(NodeAttribute), true).Cast<NodeAttribute>();
 					if (nodeAttributes.Any(x => x.GraphType == CurrentTarget.GetType()))
 					{
@@ -200,7 +200,7 @@ public class NodeEditor : ZoomableEditorWindow
 		{
 			var genericMenu = new GenericMenu();
 			var mousePosition = Event.current.mousePosition;
-			foreach (var derivedType in Utilities.GetDerivedTypes<ScriptableObject>(typeof(NodeEditorSettings).Assembly, false, false))
+			foreach (var derivedType in NodeEditorUtilities.GetDerivedTypes<ScriptableObject>(false, false))
 			{
 				var nodeAttributes = derivedType.GetCustomAttributes(typeof(NodeAttribute), true).Cast<NodeAttribute>();
 				var currentGraphNodeAttribute = nodeAttributes.FirstOrDefault(x => x.GraphType == currentTarget.GetType());
