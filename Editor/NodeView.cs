@@ -95,24 +95,27 @@ public class NodeView
 					EditorGUI.indentLevel = iterator.depth;
 
 				iterator.isExpanded = EditorGUILayout.Foldout(iterator.isExpanded, iterator.displayName, true);
+				currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
 
 				if (NodeEditor.Settings.IndentHeadersOnly)
 					EditorGUI.indentLevel = 0;
 
 				if (iterator.isExpanded)
 				{
+					currentPropertyHeight += EditorGUIUtility.standardVerticalSpacing;
 					EditorGUILayout.BeginVertical(NodeEditor.Settings.SeparatorStyle);
 
-					if (DrawPropertiesRecursive(iterator))
-					{
-						EditorGUILayout.EndVertical();
+					var proceed = DrawPropertiesRecursive(iterator);
+
+					EditorGUILayout.EndVertical();
+
+					if (depth == iterator.depth)
+						currentPropertyHeight += EditorGUIUtility.standardVerticalSpacing;
+
+					if (proceed)
 						continue;
-					}
 					else
-					{
-						EditorGUILayout.EndVertical();
 						return false;
-					}
 				}
 			}
 
