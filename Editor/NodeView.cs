@@ -4,48 +4,105 @@ using UnityEngine;
 using UnityEditor;
 using System.Linq;
 
+// TODO: Highlight selected, highlight when mousing over a connectable node while connecting
+
 public class NodeView
 {
+	public event System.Action OnDelete;
+
 	public class NodeReference
 	{
+		public System.Type propertyType;
+		public UnityEngine.Object currentTarget;
 		public string propertyPath;
 		public float height;
 	}
 
+	public bool IsConnecting { get { return connectingNodeReference != null; } }
+	public bool IsDead { get { return nodeData == null; } }
+
+	NodeEditor parentEditor;
 	NodeGraph.NodeData nodeData;
 	float currentPropertyHeight;
 	bool dragging;
 	Stack<NodeReference> nodeReferences = new Stack<NodeReference>();
-	Rect windowRect = new Rect(0, 0, 0, 0);
 	Vector2 windowSize;
+	NodeReference connectingNodeReference;
+	Rect windowRect;
 
-	public NodeView(NodeGraph.NodeData nodeData)
+	SerializedObject serializedObject;
+
+	public NodeView(NodeEditor parentEditor, NodeGraph.NodeData nodeData)
 	{
+		this.parentEditor = parentEditor;
 		this.nodeData = nodeData;
+		serializedObject = new SerializedObject(nodeData.nodeObject);
+	}
+
+	public Rect GetWindowRect(Vector2 origin)
+	{
+		return new Rect(origin + nodeData.graphPosition, windowSize);
+	}
+
+	public Rect GetWindowRectNoSize(Vector2 origin)
+	{
+		return new Rect(origin + nodeData.graphPosition, Vector2.zero);
 	}
 
 	public virtual void DrawNode(Vector2 origin)
 	{
-		windowRect.position = origin + nodeData.graphPosition;
-		var newRect = GUILayout.Window(nodeData.id, windowRect, (id) =>
+		windowRect = GetWindowRect(origin);
+		var newRect = GUILayout.Window(nodeData.id, GetWindowRectNoSize(origin), (id) =>
 		{
-			HandleEvents();
+			HandleEventsInside();
 			DrawNodeContents();
 			GUI.DragWindow();
 		}, new GUIContent(), NodeEditor.Settings.NodeGUIStyle);
 
-		windowSize = newRect.size;
+		if (Event.current.type == EventType.Repaint)
+			windowSize = newRect.size;
 
 		while (nodeReferences.Count > 0)
 			DrawConnector(nodeReferences.Pop());
 
 		if (dragging)
 			nodeData.graphPosition = NodeEditorUtilities.RoundVectorToIntegerValues(newRect.position - origin);
+
+		if (IsConnecting)
+			Handles.DrawLine(new Vector3(windowRect.position.x + 180f, windowRect.position.y + connectingNodeReference.height + 5f), Event.current.mousePosition);
+
+		HandleEventsOutside();
 	}
 
 	protected virtual void DrawConnector(NodeReference nodeReference)
 	{
-		GUI.Box(new Rect(new Vector2(windowRect.position.x, windowRect.position.y + nodeReference.height), new Vector2(windowSize.x + 30f, 10f)), "");
+		var connectorRect = new Rect(new Vector2(windowRect.position.x, windowRect.position.y + nodeReference.height), new Vector2(windowSize.x + 30f, 10f));
+		GUI.Box(connectorRect, "");
+		if (nodeReference.currentTarget != null)
+		{
+			var from = new Vector3(windowRect.position.x + 180f, windowRect.position.y + nodeReference.height + 5f);
+			var to = parentEditor.GetNodeViewRect(nodeReference.currentTarget).position;
+			Handles.DrawLine(from, to);
+		}
+		HandleConnectorEvents(connectorRect, nodeReference);
+	}
+
+	protected virtual void HandleConnectorEvents(Rect connectorRect, NodeReference nodeReference)
+	{
+		if (Event.current.type == EventType.MouseDown && Event.current.button == 0 && connectorRect.Contains(Event.current.mousePosition))
+		{
+			connectingNodeReference = nodeReference;
+			Event.current.Use();
+		}
+	}
+
+	protected void TryConnectNodeReference(NodeReference nodeReference, UnityEngine.Object target)
+	{
+		Debug.Log(serializedObject);
+		Debug.Log(nodeReference);
+		var property = serializedObject.FindProperty(nodeReference.propertyPath);
+		property.objectReferenceValue = target;
+		serializedObject.ApplyModifiedProperties();
 	}
 
 	protected virtual void DrawNodeContents()
@@ -56,7 +113,6 @@ public class NodeView
 
 		currentPropertyHeight += EditorGUIUtility.singleLineHeight + 3 * EditorGUIUtility.standardVerticalSpacing;
 
-		var serializedObject = new SerializedObject(nodeData.nodeObject);
 		serializedObject.Update();
 
 		var iterator = serializedObject.GetIterator();
@@ -128,7 +184,13 @@ public class NodeView
 					var nodeAttributes = propertyType.GetCustomAttributes(typeof(NodeAttribute), true).Cast<NodeAttribute>();
 					if (nodeAttributes.Any(x => x.GraphType == nodeData.nodeGraph.GetType()))
 					{
-						nodeReferences.Push(new NodeReference() { propertyPath = iterator.propertyPath, height = currentPropertyHeight });
+						nodeReferences.Push(new NodeReference()
+						{
+							propertyType = propertyType,
+							currentTarget = iterator.objectReferenceValue,
+							propertyPath = iterator.propertyPath,
+							height = currentPropertyHeight
+						});
 					}
 				}
 
@@ -141,7 +203,7 @@ public class NodeView
 		return next;
 	}
 
-	public virtual void HandleEvents()
+	public virtual void HandleEventsInside()
 	{
 		if (Event.current.type == EventType.MouseDown && Event.current.button == 0)
 			Selection.activeObject = nodeData.nodeObject;
@@ -151,11 +213,30 @@ public class NodeView
 			genericMenu.AddItem(new GUIContent("Delete"), false, () =>
 			{
 				nodeData.nodeGraph.DeleteNode(nodeData.nodeObject);
+				nodeData = null;
+
+				if (OnDelete != null)
+					OnDelete.Invoke();
 			});
 			genericMenu.ShowAsContext();
 			Event.current.Use();
 		}
 
 		dragging = Event.current.type == EventType.MouseDrag;
+	}
+
+	public virtual void HandleEventsOutside()
+	{
+		if (IsConnecting && ((Event.current.type == EventType.MouseUp && Event.current.button == 0)
+							 || (Event.current.type == EventType.MouseLeaveWindow)))
+		{
+			var hit = parentEditor.RaycastNode(Event.current.mousePosition);
+			if (hit != null)
+				TryConnectNodeReference(connectingNodeReference, hit.nodeObject);
+
+			connectingNodeReference = null;
+
+			Event.current.Use();
+		}
 	}
 }

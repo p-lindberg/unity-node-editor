@@ -14,45 +14,20 @@ MonoBehaviour:
   nodes:
   - id: 0
     nodeGraph: {fileID: 11400000}
-    nodeObject: {fileID: 114065038282663650}
-    graphPosition: {x: 384, y: 88}
+    nodeObject: {fileID: 114370691433218336}
+    graphPosition: {x: -27, y: -165}
     isExpanded: 1
   - id: 1
     nodeGraph: {fileID: 11400000}
-    nodeObject: {fileID: 114061015608794732}
-    graphPosition: {x: 819, y: 129}
+    nodeObject: {fileID: 114002537132315570}
+    graphPosition: {x: 80, y: 164}
     isExpanded: 1
   - id: 2
     nodeGraph: {fileID: 11400000}
-    nodeObject: {fileID: 114875566683339336}
-    graphPosition: {x: 1066, y: 154}
+    nodeObject: {fileID: 114757051702352350}
+    graphPosition: {x: 301, y: -69}
     isExpanded: 1
-  - id: 3
-    nodeGraph: {fileID: 11400000}
-    nodeObject: {fileID: 114697301680080934}
-    graphPosition: {x: 1217, y: 374}
-    isExpanded: 1
-  - id: 4
-    nodeGraph: {fileID: 11400000}
-    nodeObject: {fileID: 114923457941522486}
-    graphPosition: {x: 516, y: 304}
-    isExpanded: 0
---- !u!114 &114061015608794732
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 55a06f1b09724c24bb6ee708afad2848, type: 3}
-  m_Name: TestScriptableObject1
-  m_EditorClassIdentifier: 
-  a: 0
-  b: 
-  c: {fileID: 0}
-  d: {fileID: 0}
---- !u!114 &114065038282663650
+--- !u!114 &114002537132315570
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_PrefabParentObject: {fileID: 0}
@@ -61,34 +36,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 966146b8337cc1b478d419aa83f8524a, type: 3}
-  m_Name: TestScriptableObject
+  m_Name: TestObjectDerived1
   m_EditorClassIdentifier: 
-  othernode: {fileID: 0}
---- !u!114 &114697301680080934
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 966146b8337cc1b478d419aa83f8524a, type: 3}
-  m_Name: TestScriptableObject
-  m_EditorClassIdentifier: 
-  othernode: {fileID: 0}
---- !u!114 &114875566683339336
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 966146b8337cc1b478d419aa83f8524a, type: 3}
-  m_Name: TestScriptableObject
-  m_EditorClassIdentifier: 
-  othernode: {fileID: 0}
---- !u!114 &114923457941522486
+  otherNode: {fileID: 114370691433218336}
+--- !u!114 &114370691433218336
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_PrefabParentObject: {fileID: 0}
@@ -97,6 +48,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 606392a79efa55f418db21f431a5d614, type: 3}
-  m_Name: TestObject
+  m_Name: TestObjectBase
   m_EditorClassIdentifier: 
-  othernode: {fileID: 0}
+  otherNode: {fileID: 114757051702352350}
+--- !u!114 &114757051702352350
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 55a06f1b09724c24bb6ee708afad2848, type: 3}
+  m_Name: TestObjectDerived2
+  m_EditorClassIdentifier: 
+  otherNode: {fileID: 114002537132315570}

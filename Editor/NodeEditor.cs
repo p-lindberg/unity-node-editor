@@ -61,6 +61,9 @@ public class NodeEditor : ZoomableEditorWindow
 		var window = Init<NodeEditor>("Node Editor");
 		if (target != null)
 			window.CurrentTarget = target;
+
+		window.wantsMouseMove = true;
+		window.wantsMouseEnterLeaveWindow = true;
 	}
 
 	[OnOpenAssetAttribute(1)]
@@ -83,7 +86,8 @@ public class NodeEditor : ZoomableEditorWindow
 		if (nodeViews.TryGetValue(nodeData, out nodeView))
 			return nodeView;
 
-		var newNodeView = new NodeView(nodeData);
+		var newNodeView = new NodeView(this, nodeData);
+		newNodeView.OnDelete += () => nodeViews.Remove(nodeData);
 		nodeViews[nodeData] = newNodeView;
 		return newNodeView;
 	}
@@ -95,7 +99,10 @@ public class NodeEditor : ZoomableEditorWindow
 			BeginWindows();
 
 			foreach (var nodeData in CurrentTarget.Nodes)
-				GetNodeView(nodeData).DrawNode(origin);
+			{
+				var nodeView = GetNodeView(nodeData);
+				nodeView.DrawNode(origin);
+			}
 
 			EndWindows();
 		}
@@ -122,9 +129,26 @@ public class NodeEditor : ZoomableEditorWindow
 			genericMenu.ShowAsContext();
 			Event.current.Use();
 		}
-		else if (Event.current.type == EventType.ValidateCommand)
-		{
+		else if (Event.current.type == EventType.MouseMove
+				|| Event.current.type == EventType.MouseDrag
+				|| Event.current.type == EventType.ValidateCommand)
 			Repaint();
-		}
+	}
+
+	public NodeGraph.NodeData RaycastNode(Vector3 screenPosition)
+	{
+		return nodeViews.FirstOrDefault(x => x.Value.GetWindowRect(zoomAreaOrigin).Contains(screenPosition)).Key;
+	}
+
+	public Rect GetNodeViewRect(NodeGraph.NodeData nodeData)
+	{
+		var view = nodeViews.FirstOrDefault(x => x.Key == nodeData).Value;
+		return view != null ? view.GetWindowRect(zoomAreaOrigin) : default(Rect);
+	}
+
+	public Rect GetNodeViewRect(UnityEngine.Object nodeObject)
+	{
+		var view = nodeViews.FirstOrDefault(x => x.Key.nodeObject == nodeObject).Value;
+		return view != null ? view.GetWindowRect(zoomAreaOrigin) : default(Rect);
 	}
 }

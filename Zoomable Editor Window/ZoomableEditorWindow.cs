@@ -16,7 +16,6 @@ public class ZoomableEditorWindow : EditorWindow
 	public static T Init<T>(string windowName) where T : ZoomableEditorWindow
 	{
 		T window = EditorWindow.GetWindow<T>(windowName);
-		window.wantsMouseMove = true;
 		window.Show();
 		return window;
 	}
