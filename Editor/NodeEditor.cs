@@ -101,7 +101,7 @@ public class NodeEditor : ZoomableEditorWindow
 			foreach (var nodeData in CurrentTarget.Nodes)
 			{
 				var nodeView = GetNodeView(nodeData);
-				nodeView.DrawNode(origin);
+				nodeView.Draw(origin);
 			}
 
 			EndWindows();
@@ -135,20 +135,25 @@ public class NodeEditor : ZoomableEditorWindow
 			Repaint();
 	}
 
-	public NodeGraph.NodeData RaycastNode(Vector3 screenPosition)
+	public NodeGraph.NodeData GetNodeViewAtMousePosition(Vector3 screenPosition)
 	{
-		return nodeViews.FirstOrDefault(x => x.Value.GetWindowRect(zoomAreaOrigin).Contains(screenPosition)).Key;
+		return nodeViews.FirstOrDefault(x => x.Value.GetWindowRect().Contains(screenPosition)).Key;
+	}
+
+	public NodeView GetNodeView(UnityEngine.Object nodeObject)
+	{
+		return nodeViews.FirstOrDefault(x => x.Key.nodeObject == nodeObject).Value;
 	}
 
 	public Rect GetNodeViewRect(NodeGraph.NodeData nodeData)
 	{
 		var view = nodeViews.FirstOrDefault(x => x.Key == nodeData).Value;
-		return view != null ? view.GetWindowRect(zoomAreaOrigin) : default(Rect);
+		return view != null ? view.GetWindowRect() : default(Rect);
 	}
 
 	public Rect GetNodeViewRect(UnityEngine.Object nodeObject)
 	{
 		var view = nodeViews.FirstOrDefault(x => x.Key.nodeObject == nodeObject).Value;
-		return view != null ? view.GetWindowRect(zoomAreaOrigin) : default(Rect);
+		return view != null ? view.GetWindowRect() : default(Rect);
 	}
 }

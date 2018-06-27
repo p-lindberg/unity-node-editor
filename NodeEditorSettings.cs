@@ -40,4 +40,12 @@ public class NodeEditorSettings : ScriptableObject
 	[SerializeField] GUIStyle nodeContentToggleStyle;
 
 	public GUIStyle NodeContentToggleStyle { get { return nodeContentToggleStyle; } }
+
+	[SerializeField] GUIStyle leftConnectorStyle;
+
+	public GUIStyle LeftConnectorStyle { get { return leftConnectorStyle; } }
+
+	[SerializeField] GUIStyle rightConnectorStyle;
+
+	public GUIStyle RightConnectorStyle { get { return rightConnectorStyle; } }
 }
