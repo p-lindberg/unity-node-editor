@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using System;
+using System.Linq;
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -41,12 +42,17 @@ public class NodeGraph : ScriptableObject
 		node.name = name;
 		//node.hideFlags = HideFlags.HideInHierarchy;
 
-		nodes.Add(new NodeData() { id = nodes.Count, nodeGraph = this, nodeObject = node, graphPosition = position });
+		nodes.Add(new NodeData() { id = GetUniqueNodeID(), nodeGraph = this, nodeObject = node, graphPosition = position });
 
 		AssetDatabase.AddObjectToAsset(node, this);
 		EditorUtility.SetDirty(this);
 		AssetDatabase.SaveAssets();
 		return node;
+	}
+
+	int GetUniqueNodeID()
+	{
+		return Nodes.Max(x => x.id) + 1;
 	}
 
 	public void DeleteNode(UnityEngine.Object node)
