@@ -165,11 +165,13 @@ public class NodeView
 
 					EditorGUILayout.EndVertical();
 
-					if (depth == iterator.depth)
-						currentPropertyHeight += EditorGUIUtility.standardVerticalSpacing;
-
 					if (proceed)
+					{
+						if (depth == iterator.depth)
+							currentPropertyHeight += EditorGUIUtility.standardVerticalSpacing;
+
 						continue;
+					}
 					else
 						return false;
 				}
