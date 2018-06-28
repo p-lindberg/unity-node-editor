@@ -15,11 +15,6 @@ Moreover - many existing solutions are entire frameworks, requiring you to adopt
 for this plugin is that it leave a minimal footprint on your codebase - you could remove the plugin and keep the graphs created with it; it would only require removing some
 attributes here and there.
 
-## How to use it?
-
-IT IS NOT YET READY FOR PRODUCTION USE. Some essential features are not implemented yet, and some things may still change which could cause anything created with the plugin
-to become unusable after an update. With that in mind...
-
 ## What can it be used for?
 
 In the context of game design, a common use case for something like this is creating dialogues. Multiple option response type dialogues form tree structures, and managing complex
@@ -28,6 +23,11 @@ such dialogues requires a way to visualize the data. With this plugin it is easy
 It could also be used to create things such as skill trees, crafting systems, and so on.
 
 Visual scripting (such as behaviour trees and state machines) is of course possible too, but it requires that you implement the executive logic on your own.
+
+## How to use it?
+
+IT IS NOT YET READY FOR PRODUCTION USE. Some essential features are not implemented yet, and some things may still change which could cause anything created with the plugin
+to become unusable after an update. With that in mind...
 
 ### Defining and creating a Graph
 
