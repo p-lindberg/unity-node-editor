@@ -8,4 +8,8 @@ A node editor for unity!
 - Implement click + drag selection box for moving / deleting multiple nodes at the same time.
 - Implement node groups (box around nodes) that can be dragged around, copied and pasted, saved as template.
 - Make connector lines terminate slightly outside target node (possibly as an arrowhead or similar); this should make it easier to see that a line connects to a node, as opposed to going through it.
+- Ability to customize node UI, equivalent to how unity handles custom editors. Both open / closed mode.
+- GUI inside the window that tells you which graph you are editing.
+- Naming of nodes.
+- Setting of node width/height in the node attribute.
 - ... come up with more features!
