@@ -89,3 +89,5 @@ Unity way, by clicking the field and selecting the target in the list. That's th
 ### Current Drawbacks
 
 Drawing the inspectors on nodes is an expensive operation and will slow down the editor window when there are many fields to be drawn, so it is best to keep nodes closed if one cares about smooth performance.
+EditorGUILayout.PropertyField() seems to be the main problem (which must be used to support custom property drawers). It will soon be possible to create custom inspectors for your nodes, where you can use explicit
+type fields (like EditorGUILayout.IntField()), which should mitigate this.
