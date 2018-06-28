@@ -64,7 +64,7 @@ Once the Graph has been defined, we can create an instance of it using the Creat
 
 Similarly, any ScriptableObject can be turned into a node:
 
-```
+```csharp
 using UnityEngine;
 
 [Node(graphType: typeof(ExampleNodeGraph))]
