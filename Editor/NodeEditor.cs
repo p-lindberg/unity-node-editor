@@ -94,22 +94,25 @@ public class NodeEditor : ZoomableEditorWindow
 
 	protected override void DrawZoomAreaContents(Vector2 origin)
 	{
-		if (CurrentTarget != null && Settings != null)
+		if (CurrentTarget == null || Settings == null)
+			return;
+
+		BeginWindows();
+
+		foreach (var nodeData in CurrentTarget.Nodes)
 		{
-			BeginWindows();
-
-			foreach (var nodeData in CurrentTarget.Nodes)
-			{
-				var nodeView = GetNodeView(nodeData);
-				nodeView.Draw(origin);
-			}
-
-			EndWindows();
+			var nodeView = GetNodeView(nodeData);
+			nodeView.Draw(origin);
 		}
+
+		EndWindows();
 	}
 
 	public override void OnHandleEvents()
 	{
+		if (CurrentTarget != null || Settings != null)
+			return;
+
 		if (Event.current.type == EventType.MouseDown && Event.current.button == 1)
 		{
 			var genericMenu = new GenericMenu();
