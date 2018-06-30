@@ -31,19 +31,8 @@ to become unusable after an update. With that in mind...
 
 ### Defining and creating a Graph
 
-At the moment:
-
-```csharp
-using UnityEngine;
-
-[CreateAssetMenu(menuName = "Example Node Graph")]
-public class ExampleNodeGraph : NodeGraph
-{
-
-}
-```
-
-But the plan is to change this into (see open issues)
+To create a graph, one must first define a ScriptableObject and tag it with the `[NodeGraph]` attribute. To get access to the nodes inside the graph, the graph must have
+atleast one serialized field (either public or with the `[SerializeField]`) attribute, with the [ExposedNode] attribute.
 
 ```csharp
 using UnityEngine;
@@ -56,9 +45,8 @@ public class ExampleNodeGraph : ScriptableObject
 }
 ```
 
-Notice how this opens up for the possibility of having an arbitrary amount of nodes exposed on your graph object. It also means that it doens't intrude on your inheritance hierarchies.
-
-Once the Graph has been defined, we can create an instance of it using the Create Asset menu. Double clicking the asset in the project view will then open the Node Editor window.
+Note that the `[ExposeNode]` attribute is not supported for nested fields. Once the Graph has been defined, we can create an instance of it using the Create Asset
+menu. Double clicking the asset in the project view will then open the Node Editor window with focus set to that graph.
 
 ### Defining and creating a Node
 
@@ -82,9 +70,15 @@ in the context menu, under Create. This will create an instance of the node, and
 ### Designing graphs
 
 Using the Node Editor to design graphs is fairly straight-forward. The nodes can be expanded to show the inspector of the underlying ScriptableObject. Clicking a node also targets it in the Inspector.
+
 If the ScriptableObject contains a serialized member referring to a type which is a node in the same graph, a connector will appear next to that field when the node is in expanded mode. Clicking the 
 connector will let you drag a line to another node in the graph; releasing on that node will set the target of the field to be that node - creating a connection. Connections can also be made the regular
-Unity way, by clicking the field and selecting the target in the list. That's the basics.
+Unity way, by clicking the field and selecting the target in the list. 
+
+Right clicking a node will also allow you to set it in one of the fields on the graph tagged with the `[ExposedNode]` attribute with matching type. This way, you can specify a root node or similar. Note 
+that it is possible to have multiple exposed nodes.
+
+That's the basics.
 
 ### Current Drawbacks
 
