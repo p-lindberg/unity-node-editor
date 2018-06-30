@@ -66,6 +66,13 @@ public class NodeEditor : ZoomableEditorWindow
 		window.wantsMouseEnterLeaveWindow = true;
 	}
 
+	protected override void DrawUtilityBarContents()
+	{
+		base.DrawUtilityBarContents();
+		GUILayout.FlexibleSpace();
+		GUILayout.Label(CurrentTarget != null ? CurrentTarget.name : "No graph selected", Settings.GraphHeaderStyle);
+	}
+
 	[OnOpenAssetAttribute(1)]
 	public static bool OnOpenAsset(int instanceID, int line)
 	{
