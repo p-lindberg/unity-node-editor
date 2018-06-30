@@ -44,9 +44,9 @@ public class NodeConnector
 			var nodePosition = NodeView.GetWindowRect().position;
 			var nodeSize = NodeView.GetWindowRect().size;
 			if (left)
-				return nodePosition + new Vector2(-NodeView.GUIStyle.border.left / 2 - GetSize().x, height);
+				return nodePosition + new Vector2(-GetSize().x, height);
 			else
-				return nodePosition + new Vector2(nodeSize.x + NodeView.GUIStyle.border.right / 2, height);
+				return nodePosition + new Vector2(nodeSize.x, height);
 		}
 		else
 			return NodeView.GetWindowRect().center;

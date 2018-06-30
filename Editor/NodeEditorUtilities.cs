@@ -5,9 +5,12 @@ using UnityEditor;
 using System;
 using System.Text.RegularExpressions;
 using System.Linq;
+using System.Reflection;
 
 public static class NodeEditorUtilities
 {
+	public const BindingFlags StandardBindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy;
+
 	public static Type GetPropertyType(SerializedProperty property)
 	{
 		var typeName = GetPropertyTypeName(property);

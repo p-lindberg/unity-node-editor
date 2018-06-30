@@ -52,4 +52,8 @@ public class NodeViewSettings : ScriptableObject
 	[SerializeField] GUIStyle rightConnectorStyle;
 
 	public GUIStyle RightConnectorStyle { get { return rightConnectorStyle; } }
+
+	[SerializeField] GUIStyle tagStyle;
+
+	public GUIStyle TagStyle { get { return tagStyle; } }
 }

@@ -5,16 +5,17 @@ using UnityEditor;
 using UnityEditor.Callbacks;
 using System.Linq;
 using System;
+using System.Reflection;
 
 public class NodeEditor : ZoomableEditorWindow
 {
-	[SerializeField] NodeGraph currentTarget;
+	[SerializeField] ScriptableObject currentTarget;
 
-	NodeGraph CurrentTarget { get { return currentTarget; } set { currentTarget = value; EditorUtility.SetDirty(this); } }
+	public ScriptableObject CurrentTarget { get { return currentTarget; } set { currentTarget = value; EditorUtility.SetDirty(this); } }
 
 	Vector2 currentMousePosition;
 
-	Dictionary<NodeGraph.NodeData, NodeView> nodeViews = new Dictionary<NodeGraph.NodeData, NodeView>();
+	Dictionary<NodeGraphData.NodeData, NodeView> nodeViews = new Dictionary<NodeGraphData.NodeData, NodeView>();
 
 	static NodeEditorSettings settings;
 
@@ -55,7 +56,7 @@ public class NodeEditor : ZoomableEditorWindow
 		OpenWindow(null);
 	}
 
-	public static void OpenWindow(NodeGraph target)
+	public static void OpenWindow(ScriptableObject target)
 	{
 		var window = Init<NodeEditor>("Node Editor");
 		if (target != null)
@@ -68,18 +69,20 @@ public class NodeEditor : ZoomableEditorWindow
 	[OnOpenAssetAttribute(1)]
 	public static bool OnOpenAsset(int instanceID, int line)
 	{
-		var targetObject = EditorUtility.InstanceIDToObject(instanceID);
-		var nodeGraph = targetObject as NodeGraph;
-		if (nodeGraph != null)
+		var targetObject = EditorUtility.InstanceIDToObject(instanceID) as ScriptableObject;
+		if (targetObject != null)
 		{
-			OpenWindow(nodeGraph);
+			if (targetObject.GetType().GetCustomAttributes(typeof(NodeGraphAttribute), true).Count() == 0)
+				return false;
+
+			OpenWindow(targetObject);
 			return true;
 		}
 
 		return false;
 	}
 
-	NodeView GetNodeView(NodeGraph.NodeData nodeData)
+	NodeView GetNodeView(NodeGraphData.NodeData nodeData)
 	{
 		NodeView nodeView;
 		if (nodeViews.TryGetValue(nodeData, out nodeView))
@@ -96,15 +99,65 @@ public class NodeEditor : ZoomableEditorWindow
 			viewParameters.expandedSizeOverride = nodeAttribute.ExpandedSizeOverride;
 
 		var newNodeView = new NodeView(this, nodeData, viewParameters);
-		newNodeView.OnDelete += () => nodeViews.Remove(nodeData);
+		SetupNodeView(newNodeView, nodeData);
 		nodeViews[nodeData] = newNodeView;
 		return newNodeView;
+	}
+
+	void SetupNodeView(NodeView nodeView, NodeGraphData.NodeData nodeData)
+	{
+		nodeView.OnShowContextMenu += (genericMenu) => SetupNodeContextMenuItems(nodeData, genericMenu);
+	}
+
+	void SetupNodeContextMenuItems(NodeGraphData.NodeData nodeData, GenericMenu genericMenu)
+	{
+		genericMenu.AddItem(new GUIContent("Delete"), false, () =>
+		{
+			GetNodeGraphData(CurrentTarget).DeleteNode(nodeData.nodeObject);
+			nodeViews.Remove(nodeData);
+		});
+
+		foreach (var exposedNode in GetExposedNodeFields())
+		{
+			if (exposedNode.Key.FieldType.IsAssignableFrom(nodeData.nodeObject.GetType()))
+				genericMenu.AddItem(new GUIContent("Set as/" + (exposedNode.Value.Name ?? exposedNode.Key.Name)), false, () =>
+				{
+					Undo.RecordObject(CurrentTarget, "Changed exposed node");
+					exposedNode.Key.SetValue(CurrentTarget, nodeData.nodeObject);
+					EditorUtility.SetDirty(CurrentTarget);
+				});
+		}
+	}
+
+	IEnumerable<KeyValuePair<FieldInfo, ExposedNodeAttribute>> GetExposedNodeFields()
+	{
+		foreach (var field in CurrentTarget.GetType().GetFields(NodeEditorUtilities.StandardBindingFlags).Where(x => x.FieldType.IsSubclassOf(typeof(ScriptableObject))))
+		{
+			var exposedNodeAttribute = field.GetCustomAttributes(typeof(ExposedNodeAttribute), true).FirstOrDefault() as ExposedNodeAttribute;
+			if (exposedNodeAttribute != null)
+				yield return new KeyValuePair<FieldInfo, ExposedNodeAttribute>(field, exposedNodeAttribute);
+		}
 	}
 
 	NodeAttribute GetCurrentGraphNodeAttribute(Type type)
 	{
 		var nodeAttributes = type.GetCustomAttributes(typeof(NodeAttribute), true).Cast<NodeAttribute>();
 		return nodeAttributes.FirstOrDefault(x => x.GraphType == currentTarget.GetType());
+	}
+
+	NodeGraphData GetNodeGraphData(ScriptableObject scriptableObject)
+	{
+		var nodeGraphData = AssetDatabase.LoadAssetAtPath<NodeGraphData>(AssetDatabase.GetAssetPath(scriptableObject));
+		if (nodeGraphData == null)
+		{
+			nodeGraphData = ScriptableObject.CreateInstance<NodeGraphData>();
+			nodeGraphData.name = "Node Graph Data";
+			AssetDatabase.AddObjectToAsset(nodeGraphData, scriptableObject);
+			EditorUtility.SetDirty(scriptableObject);
+			AssetDatabase.SaveAssets();
+		}
+
+		return nodeGraphData;
 	}
 
 	protected override void DrawZoomAreaContents(Vector2 origin)
@@ -114,10 +167,14 @@ public class NodeEditor : ZoomableEditorWindow
 
 		BeginWindows();
 
-		foreach (var nodeData in CurrentTarget.Nodes)
+		foreach (var nodeData in GetNodeGraphData(CurrentTarget).Nodes)
 		{
 			var nodeView = GetNodeView(nodeData);
 			nodeView.Draw(origin);
+
+			foreach (var kvp in GetExposedNodeFields())
+				if (kvp.Key.GetValue(CurrentTarget) as UnityEngine.Object == nodeData.nodeObject)
+					nodeView.DrawTag(kvp.Value.Name ?? kvp.Key.Name);
 		}
 
 		EndWindows();
@@ -139,7 +196,7 @@ public class NodeEditor : ZoomableEditorWindow
 					genericMenu.AddItem(new GUIContent("Create/" + (currentGraphNodeAttribute.NodeName ?? derivedType.Name)), false, () =>
 					{
 						var nodePosition = NodeEditorUtilities.RoundVectorToIntegerValues(ConvertScreenCoordsToZoomCoords(mousePosition));
-						CurrentTarget.CreateNode(derivedType, nodePosition, (currentGraphNodeAttribute.NodeName ?? derivedType.Name));
+						GetNodeGraphData(CurrentTarget).CreateNode(derivedType, nodePosition, (currentGraphNodeAttribute.NodeName ?? derivedType.Name));
 					});
 			}
 
@@ -147,12 +204,20 @@ public class NodeEditor : ZoomableEditorWindow
 			Event.current.Use();
 		}
 		else if (Event.current.type == EventType.MouseMove
-				|| Event.current.type == EventType.MouseDrag
-				|| Event.current.type == EventType.ValidateCommand)
+				|| Event.current.type == EventType.MouseDrag)
 			Repaint();
+		else if (Event.current.type == EventType.ValidateCommand)
+		{
+			if (Event.current.commandName == "UndoRedoPerformed")
+			{
+				AssetDatabase.SaveAssets();
+			}
+
+			Repaint();
+		}
 	}
 
-	public NodeGraph.NodeData GetNodeViewAtMousePosition(Vector3 screenPosition)
+	public NodeGraphData.NodeData GetNodeViewAtMousePosition(Vector3 screenPosition)
 	{
 		return nodeViews.FirstOrDefault(x => x.Value.GetWindowRect().Contains(screenPosition)).Key;
 	}
@@ -162,7 +227,7 @@ public class NodeEditor : ZoomableEditorWindow
 		return nodeViews.FirstOrDefault(x => x.Key.nodeObject == nodeObject).Value;
 	}
 
-	public Rect GetNodeViewRect(NodeGraph.NodeData nodeData)
+	public Rect GetNodeViewRect(NodeGraphData.NodeData nodeData)
 	{
 		var view = nodeViews.FirstOrDefault(x => x.Key == nodeData).Value;
 		return view != null ? view.GetWindowRect() : default(Rect);

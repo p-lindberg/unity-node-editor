@@ -8,7 +8,7 @@ using System.Linq;
 
 public class NodeView
 {
-	public event System.Action OnDelete;
+	public event System.Action<GenericMenu> OnShowContextMenu;
 
 	public bool IsDead { get { return nodeData == null; } }
 
@@ -28,13 +28,13 @@ public class NodeView
 	float currentPropertyHeight;
 	bool dragging;
 	Vector2 origin;
-	NodeGraph.NodeData nodeData;
+	NodeGraphData.NodeData nodeData;
 	Vector2 size;
 	SerializedObject serializedObject;
 	Dictionary<string, NodeConnector> nodeConnectors = new Dictionary<string, NodeConnector>();
 	System.Action postDraw;
 
-	public NodeView(NodeEditor nodeEditor, NodeGraph.NodeData nodeData, ViewParameters viewParameters)
+	public NodeView(NodeEditor nodeEditor, NodeGraphData.NodeData nodeData, ViewParameters viewParameters)
 	{
 		this.NodeEditor = nodeEditor;
 		this.nodeData = nodeData;
@@ -109,24 +109,40 @@ public class NodeView
 		}
 		else if (Event.current.type == EventType.MouseDown && Event.current.button == 1)
 		{
-			var genericMenu = new GenericMenu();
-			genericMenu.AddItem(new GUIContent(nodeData.isExpanded ? "Collapse" : "Expand"), false, () =>
-			{
-				nodeData.isExpanded = !nodeData.isExpanded;
-			});
-			genericMenu.AddItem(new GUIContent("Delete"), false, () =>
-			{
-				nodeData.nodeGraph.DeleteNode(nodeData.nodeObject);
-				nodeData = null;
-
-				if (OnDelete != null)
-					OnDelete.Invoke();
-			});
-			genericMenu.ShowAsContext();
+			DrawRightClickContextMenu();
 			Event.current.Use();
 		}
 
 		dragging = Event.current.type == EventType.MouseDrag;
+	}
+
+	void DrawRightClickContextMenu()
+	{
+		var genericMenu = new GenericMenu();
+		genericMenu.AddItem(new GUIContent(nodeData.isExpanded ? "Collapse" : "Expand"), false, () =>
+		{
+			nodeData.isExpanded = !nodeData.isExpanded;
+		});
+
+		if (OnShowContextMenu != null)
+			OnShowContextMenu.Invoke(genericMenu);
+
+		genericMenu.ShowAsContext();
+	}
+
+	public void DrawTag(string tag)
+	{
+		var labelRect = GetWindowRect();
+		labelRect.position = new Vector2(labelRect.position.x, labelRect.position.y - 2 * EditorGUIUtility.singleLineHeight);
+		labelRect.height = 2 * EditorGUIUtility.singleLineHeight;
+		GUILayout.BeginArea(labelRect, "");
+		GUILayout.FlexibleSpace();
+		GUILayout.BeginHorizontal();
+		GUILayout.FlexibleSpace();
+		GUILayout.Label(tag, Settings.TagStyle);
+		GUILayout.FlexibleSpace();
+		GUILayout.EndHorizontal();
+		GUILayout.EndArea();
 	}
 
 	protected virtual void DrawContents()
@@ -183,7 +199,7 @@ public class NodeView
 	protected bool DrawPropertiesRecursive(SerializedProperty iterator)
 	{
 		bool next = iterator.NextVisible(true);
-		var depth = iterator.depth;
+		var depth = next != false ? iterator.depth : 0;
 		while (next && iterator.depth >= depth)
 		{
 			if (iterator.hasVisibleChildren)
@@ -225,7 +241,7 @@ public class NodeView
 				{
 					var propertyType = NodeEditorUtilities.GetPropertyType(iterator);
 					var nodeAttributes = propertyType.GetCustomAttributes(typeof(NodeAttribute), true).Cast<NodeAttribute>();
-					if (nodeAttributes.Any(x => x.GraphType == nodeData.nodeGraph.GetType()))
+					if (nodeAttributes.Any(x => x.GraphType == NodeEditor.CurrentTarget.GetType()))
 					{
 						var nodeConnector = GetNodeConnector(iterator.propertyPath);
 						nodeConnector.SetDrawProperties(currentPropertyHeight, true);

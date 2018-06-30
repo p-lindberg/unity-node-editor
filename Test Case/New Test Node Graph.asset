@@ -11,64 +11,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 638239e4e0b60154586bc5001728fe79, type: 3}
   m_Name: New Test Node Graph
   m_EditorClassIdentifier: 
-  nodes:
-  - id: 0
-    nodeGraph: {fileID: 11400000}
-    nodeObject: {fileID: 114734129206464578}
-    graphPosition: {x: 125, y: 44}
-    isExpanded: 0
-  - id: 2
-    nodeGraph: {fileID: 11400000}
-    nodeObject: {fileID: 114948367070541352}
-    graphPosition: {x: 721, y: 76}
-    isExpanded: 0
-  - id: 3
-    nodeGraph: {fileID: 11400000}
-    nodeObject: {fileID: 114679978383115326}
-    graphPosition: {x: 107, y: 296}
-    isExpanded: 0
-  - id: 4
-    nodeGraph: {fileID: 11400000}
-    nodeObject: {fileID: 114787439564754574}
-    graphPosition: {x: 140, y: 622}
-    isExpanded: 0
-  - id: 5
-    nodeGraph: {fileID: 11400000}
-    nodeObject: {fileID: 114512928710035996}
-    graphPosition: {x: 656, y: 388}
-    isExpanded: 1
-  - id: 6
-    nodeGraph: {fileID: 11400000}
-    nodeObject: {fileID: 114059934890587910}
-    graphPosition: {x: 984, y: 194}
-    isExpanded: 0
---- !u!114 &114059934890587910
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 966146b8337cc1b478d419aa83f8524a, type: 3}
-  m_Name: "A Pretty Cool Node\u2122"
-  m_EditorClassIdentifier: 
-  nestedClass:
-    otherNode1: {fileID: 0}
-    otherNode2: {fileID: 0}
-    otherNode3: {fileID: 0}
-    otherNode4: {fileID: 0}
-  nestedClassList:
-  - otherNode1: {fileID: 0}
-    otherNode2: {fileID: 0}
-    otherNode3: {fileID: 0}
-    otherNode4: {fileID: 0}
-  - otherNode1: {fileID: 0}
-    otherNode2: {fileID: 0}
-    otherNode3: {fileID: 0}
-    otherNode4: {fileID: 0}
-  otherNode: {fileID: 0}
---- !u!114 &114512928710035996
+  rootNode: {fileID: 0}
+  secondaryRoot: {fileID: 0}
+--- !u!114 &114200908246116150
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_PrefabParentObject: {fileID: 0}
@@ -86,7 +31,25 @@ MonoBehaviour:
     otherNode4: {fileID: 0}
   nestedClassList: []
   otherNode: {fileID: 0}
---- !u!114 &114679978383115326
+--- !u!114 &114435680422723530
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 606392a79efa55f418db21f431a5d614, type: 3}
+  m_Name: TestObjectBase
+  m_EditorClassIdentifier: 
+  nestedClass:
+    otherNode1: {fileID: 114200908246116150}
+    otherNode2: {fileID: 0}
+    otherNode3: {fileID: 0}
+    otherNode4: {fileID: 0}
+  nestedClassList: []
+  otherNode: {fileID: 0}
+--- !u!114 &114637523920644330
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_PrefabParentObject: {fileID: 0}
@@ -95,43 +58,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 966146b8337cc1b478d419aa83f8524a, type: 3}
-  m_Name: TestObjectDerived1
-  m_EditorClassIdentifier: 
-  nestedClass:
-    otherNode1: {fileID: 114948367070541352}
-    otherNode2: {fileID: 0}
-    otherNode3: {fileID: 114948367070541352}
-    otherNode4: {fileID: 114512928710035996}
-  nestedClassList: []
-  otherNode: {fileID: 114787439564754574}
---- !u!114 &114734129206464578
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 606392a79efa55f418db21f431a5d614, type: 3}
-  m_Name: TestObjectBase
-  m_EditorClassIdentifier: 
-  nestedClass:
-    otherNode1: {fileID: 114948367070541352}
-    otherNode2: {fileID: 114948367070541352}
-    otherNode3: {fileID: 0}
-    otherNode4: {fileID: 0}
-  nestedClassList: []
-  otherNode: {fileID: 114679978383115326}
---- !u!114 &114787439564754574
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 606392a79efa55f418db21f431a5d614, type: 3}
-  m_Name: TestObjectBase
+  m_Name: "A Pretty Cool Node\u2122"
   m_EditorClassIdentifier: 
   nestedClass:
     otherNode1: {fileID: 0}
@@ -139,8 +66,58 @@ MonoBehaviour:
     otherNode3: {fileID: 0}
     otherNode4: {fileID: 0}
   nestedClassList: []
-  otherNode: {fileID: 114512928710035996}
---- !u!114 &114948367070541352
+  otherNode: {fileID: 0}
+--- !u!114 &114660339309567808
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f9194b8c38ed3ce4dba955219e487f91, type: 3}
+  m_Name: Node Graph Data
+  m_EditorClassIdentifier: 
+  nodes:
+  - id: 0
+    nodeObject: {fileID: 114435680422723530}
+    graphPosition: {x: -401, y: -1394}
+    isExpanded: 1
+  - id: 2
+    nodeObject: {fileID: 114200908246116150}
+    graphPosition: {x: 285, y: -1183}
+    isExpanded: 1
+  - id: 3
+    nodeObject: {fileID: 114959606772972328}
+    graphPosition: {x: 22, y: -811}
+    isExpanded: 1
+  - id: 4
+    nodeObject: {fileID: 114776567774379920}
+    graphPosition: {x: 549, y: -928}
+    isExpanded: 1
+  - id: 5
+    nodeObject: {fileID: 114637523920644330}
+    graphPosition: {x: 601, y: -1075}
+    isExpanded: 0
+--- !u!114 &114776567774379920
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 55a06f1b09724c24bb6ee708afad2848, type: 3}
+  m_Name: TestObjectDerived2
+  m_EditorClassIdentifier: 
+  nestedClass:
+    otherNode1: {fileID: 0}
+    otherNode2: {fileID: 0}
+    otherNode3: {fileID: 0}
+    otherNode4: {fileID: 0}
+  nestedClassList: []
+  otherNode: {fileID: 0}
+--- !u!114 &114959606772972328
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_PrefabParentObject: {fileID: 0}
@@ -152,9 +129,9 @@ MonoBehaviour:
   m_Name: TestObjectBase
   m_EditorClassIdentifier: 
   nestedClass:
-    otherNode1: {fileID: 0}
+    otherNode1: {fileID: 114200908246116150}
     otherNode2: {fileID: 0}
-    otherNode3: {fileID: 0}
+    otherNode3: {fileID: 114435680422723530}
     otherNode4: {fileID: 0}
   nestedClassList: []
   otherNode: {fileID: 0}
