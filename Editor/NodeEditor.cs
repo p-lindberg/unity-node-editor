@@ -118,7 +118,7 @@ public class NodeEditor : ZoomableEditorWindow
 
 	void SetupNodeContextMenuItems(NodeGraphData.NodeData nodeData, GenericMenu genericMenu)
 	{
-		genericMenu.AddItem(new GUIContent("Delete"), false, () =>
+		genericMenu.AddItem(new GUIContent("Delete/Confirm"), false, () =>
 		{
 			GetNodeGraphData(CurrentTarget).DeleteNode(nodeData.nodeObject);
 			nodeViews.Remove(nodeData);
