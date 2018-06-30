@@ -229,7 +229,7 @@ MonoBehaviour:
       m_ScaledBackgrounds: []
       m_TextColor: {r: 0, g: 0, b: 0, a: 1}
     m_Active:
-      m_Background: {fileID: 0}
+      m_Background: {fileID: 2800000, guid: 1e49d00c3f0f2c34c8fcf3379cdacc89, type: 3}
       m_ScaledBackgrounds: []
       m_TextColor: {r: 0, g: 0, b: 0, a: 1}
     m_Focused:
@@ -296,7 +296,7 @@ MonoBehaviour:
       m_ScaledBackgrounds: []
       m_TextColor: {r: 0, g: 0, b: 0, a: 1}
     m_Active:
-      m_Background: {fileID: 0}
+      m_Background: {fileID: 2800000, guid: ca1e17d027fee6f43bf9fc1b291fbe07, type: 3}
       m_ScaledBackgrounds: []
       m_TextColor: {r: 0, g: 0, b: 0, a: 1}
     m_Focused:

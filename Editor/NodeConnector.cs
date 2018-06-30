@@ -8,8 +8,8 @@ public class NodeConnector
 	public event System.Action OnDeath;
 
 	public NodeView NodeView { get; private set; }
-	public GUIStyle LeftGUIStyle { get { return NodeEditor.Settings.DefaultNodeViewSettings.LeftConnectorStyle; } }
-	public GUIStyle RightGUIStyle { get { return NodeEditor.Settings.DefaultNodeViewSettings.RightConnectorStyle; } }
+	public GUIStyle LeftGUIStyle { get; private set; }
+	public GUIStyle RightGUIStyle { get; private set; }
 	public string PropertyPath { get; private set; }
 	public bool Connecting { get; private set; }
 	public bool Dead { get; private set; }
@@ -23,6 +23,8 @@ public class NodeConnector
 		this.NodeView = nodeView;
 		this.serializedObject = serializedObject;
 		this.PropertyPath = propertyPath;
+		LeftGUIStyle = new GUIStyle(NodeEditor.Settings.DefaultNodeViewSettings.LeftConnectorStyle);
+		RightGUIStyle = new GUIStyle(NodeEditor.Settings.DefaultNodeViewSettings.RightConnectorStyle);
 	}
 
 	public void SetDrawProperties(float height, bool visible)
@@ -69,6 +71,7 @@ public class NodeConnector
 	{
 		var rect = GetRect(left: false);
 		var guiStyle = RightGUIStyle;
+		bool active = false;
 
 		var property = serializedObject.FindProperty(PropertyPath);
 		if (property == null)
@@ -94,16 +97,34 @@ public class NodeConnector
 
 				if (!Connecting)
 					Handles.DrawLine(rect.center, targetNodeView.GetWindowRect().center);
+
+				active = true;
 			}
 		}
 
 		if (Connecting)
+		{
 			Handles.DrawLine(rect.center, Event.current.mousePosition);
+			active = true;
+		}
+
+		if (active)
+			SwitchActiveState(guiStyle);
 
 		GUI.Box(rect, "", guiStyle);
 
+		if (active)
+			SwitchActiveState(guiStyle);
+
 		HandleConnectorEvents(rect);
 		ResetDrawProperties();
+	}
+
+	void SwitchActiveState(GUIStyle guiStyle)
+	{
+		var temp = guiStyle.normal.background;
+		guiStyle.normal.background = guiStyle.active.background;
+		guiStyle.active.background = temp;
 	}
 
 	void HandleConnectorEvents(Rect connectorRect)
@@ -119,6 +140,11 @@ public class NodeConnector
 			var hit = NodeView.NodeEditor.GetNodeViewAtMousePosition(Event.current.mousePosition);
 			if (hit != null)
 				ConnectTo(hit.nodeObject);
+			else
+			{
+				if (!connectorRect.Contains(Event.current.mousePosition) || Event.current.alt)
+					ConnectTo(null);
+			}
 
 			Connecting = false;
 
