@@ -18,6 +18,8 @@ public class NodeView
 
 	public virtual GUIStyle GUIStyle { get { return Settings.GUIStyle; } }
 
+	public UnityEngine.Object NodeObject { get { return nodeData.nodeObject; } }
+
 	public class ViewParameters
 	{
 		public string name;
