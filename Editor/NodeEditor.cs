@@ -110,7 +110,7 @@ public class NodeEditor : ZoomableEditorWindow
 
 	public override void OnHandleEvents()
 	{
-		if (CurrentTarget != null || Settings != null)
+		if (CurrentTarget == null || Settings == null)
 			return;
 
 		if (Event.current.type == EventType.MouseDown && Event.current.button == 1)
