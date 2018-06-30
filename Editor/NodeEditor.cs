@@ -93,7 +93,15 @@ public class NodeEditor : ZoomableEditorWindow
 	{
 		NodeView nodeView;
 		if (nodeViews.TryGetValue(nodeData, out nodeView))
+		{
+			if (nodeView.NodeObject == null)
+			{
+				nodeViews.Remove(nodeData);
+				return GetNodeView(nodeData);
+			}
+
 			return nodeView;
+		}
 
 		var viewParameters = new NodeView.ViewParameters();
 

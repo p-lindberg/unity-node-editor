@@ -17,6 +17,20 @@ public class NodeGraphData : ScriptableObject
 		public UnityEngine.Object nodeObject;
 		public Vector2 graphPosition;
 		public bool isExpanded;
+
+		public override bool Equals(object obj)
+		{
+			var nodeData = obj as NodeData;
+			if (nodeData == null)
+				return false;
+
+			return nodeData.id == id;
+		}
+
+		public override int GetHashCode()
+		{
+			return id.GetHashCode();
+		}
 	}
 
 	[SerializeField]/* [HideInInspector] */ List<NodeData> nodes = new List<NodeData>();
