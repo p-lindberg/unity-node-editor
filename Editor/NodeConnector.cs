@@ -8,8 +8,8 @@ public class NodeConnector
 	public event System.Action OnDeath;
 
 	public NodeView NodeView { get; private set; }
-	public GUIStyle LeftGUIStyle { get { return NodeEditor.Settings.LeftConnectorStyle; } }
-	public GUIStyle RightGUIStyle { get { return NodeEditor.Settings.RightConnectorStyle; } }
+	public GUIStyle LeftGUIStyle { get { return NodeEditor.Settings.DefaultNodeViewSettings.LeftConnectorStyle; } }
+	public GUIStyle RightGUIStyle { get { return NodeEditor.Settings.DefaultNodeViewSettings.RightConnectorStyle; } }
 	public string PropertyPath { get; private set; }
 	public bool Connecting { get; private set; }
 	public bool Dead { get; private set; }

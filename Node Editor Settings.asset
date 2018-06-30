@@ -1,0 +1,16 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 705e067ae274f324caf0e90ee8c4bf7b, type: 3}
+  m_Name: Node Editor Settings
+  m_EditorClassIdentifier: 
+  windowBackground: {fileID: 2800000, guid: 1cfed0f2be4d2ac4aaf1086b0d89921a, type: 3}
+  defaultNodeViewSettings: {fileID: 11400000, guid: 4d9dd2bb4245b83428ba17dcd386c9f2,
+    type: 2}

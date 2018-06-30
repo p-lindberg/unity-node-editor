@@ -10,11 +10,13 @@ using System;
 public class NodeAttribute : Attribute
 {
 	public readonly Type GraphType;
-	public readonly string MenuName;
+	public readonly string NodeName;
+	public readonly Vector2 ExpandedSizeOverride;
 
-	public NodeAttribute(Type graphType, string menuName = null)
+	public NodeAttribute(Type graphType, string nodeName = null, float minWidth = 0, float minHeight = 0)
 	{
-		this.GraphType = graphType;
-		this.MenuName = menuName;
+		GraphType = graphType;
+		NodeName = nodeName;
+		ExpandedSizeOverride = new Vector2(minWidth, minHeight);
 	}
 }

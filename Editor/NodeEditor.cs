@@ -42,9 +42,8 @@ public class NodeEditor : ZoomableEditorWindow
 		var settingsGuids = AssetDatabase.FindAssets("t:NodeEditorSettings");
 		if (settingsGuids.Length == 0)
 		{
-			var settings = ScriptableObject.CreateInstance<NodeEditorSettings>();
-			AssetDatabase.CreateAsset(settings, "Assets/Scripts/Codebase/Node Editor/NodeEditorSettings.asset");
-			return settings;
+			Debug.LogError("Could not find Node Editor Settings object. Please create it.");
+			return null;
 		}
 		else
 			return AssetDatabase.LoadAssetAtPath<NodeEditorSettings>(AssetDatabase.GUIDToAssetPath(settingsGuids[0]));
@@ -86,10 +85,26 @@ public class NodeEditor : ZoomableEditorWindow
 		if (nodeViews.TryGetValue(nodeData, out nodeView))
 			return nodeView;
 
-		var newNodeView = new NodeView(this, nodeData);
+		var viewParameters = new NodeView.ViewParameters();
+
+		var nodeAttribute = GetCurrentGraphNodeAttribute(nodeData.nodeObject.GetType());
+		if (nodeAttribute == null)
+		{
+			// TODO: The type is no longer a node in this graph type. Draw it with regular node view but grey it out.
+		}
+		else
+			viewParameters.expandedSizeOverride = nodeAttribute.ExpandedSizeOverride;
+
+		var newNodeView = new NodeView(this, nodeData, viewParameters);
 		newNodeView.OnDelete += () => nodeViews.Remove(nodeData);
 		nodeViews[nodeData] = newNodeView;
 		return newNodeView;
+	}
+
+	NodeAttribute GetCurrentGraphNodeAttribute(Type type)
+	{
+		var nodeAttributes = type.GetCustomAttributes(typeof(NodeAttribute), true).Cast<NodeAttribute>();
+		return nodeAttributes.FirstOrDefault(x => x.GraphType == currentTarget.GetType());
 	}
 
 	protected override void DrawZoomAreaContents(Vector2 origin)
@@ -119,13 +134,12 @@ public class NodeEditor : ZoomableEditorWindow
 			var mousePosition = Event.current.mousePosition;
 			foreach (var derivedType in NodeEditorUtilities.GetDerivedTypes<ScriptableObject>(false, false))
 			{
-				var nodeAttributes = derivedType.GetCustomAttributes(typeof(NodeAttribute), true).Cast<NodeAttribute>();
-				var currentGraphNodeAttribute = nodeAttributes.FirstOrDefault(x => x.GraphType == currentTarget.GetType());
+				var currentGraphNodeAttribute = GetCurrentGraphNodeAttribute(derivedType);
 				if (currentGraphNodeAttribute != null)
-					genericMenu.AddItem(new GUIContent("Create/" + (currentGraphNodeAttribute.MenuName ?? derivedType.Name)), false, () =>
+					genericMenu.AddItem(new GUIContent("Create/" + (currentGraphNodeAttribute.NodeName ?? derivedType.Name)), false, () =>
 					{
 						var nodePosition = NodeEditorUtilities.RoundVectorToIntegerValues(ConvertScreenCoordsToZoomCoords(mousePosition));
-						CurrentTarget.CreateNode(derivedType, nodePosition, derivedType.Name);
+						CurrentTarget.CreateNode(derivedType, nodePosition, (currentGraphNodeAttribute.NodeName ?? derivedType.Name));
 					});
 			}
 

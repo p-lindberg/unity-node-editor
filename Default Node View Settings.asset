@@ -9,11 +9,14 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a005eacf069bd7349b97ee309fc673bc, type: 3}
-  m_Name: NodeEditorSettings
+  m_Name: Default Node View Settings
   m_EditorClassIdentifier: 
-  currentTarget: {fileID: 0}
-  nodeGUIStyle:
-    m_Name: Test
+  defaultWidth: 500
+  defaultLabelWidth: 0
+  indentNested: 1
+  indentHeadersOnly: 1
+  guiStyle:
+    m_Name: 
     m_Normal:
       m_Background: {fileID: 2800000, guid: 10141d58b586ef34dac8c4d8e2696f0e, type: 3}
       m_ScaledBackgrounds: []
@@ -79,8 +82,6 @@ MonoBehaviour:
     m_FixedHeight: 0
     m_StretchWidth: 1
     m_StretchHeight: 0
-  windowBackground: {fileID: 2800000, guid: 1cfed0f2be4d2ac4aaf1086b0d89921a, type: 3}
-  defaultLabelWidth: 100
   nodeHeaderStyle:
     m_Name: 
     m_Normal:
@@ -148,8 +149,6 @@ MonoBehaviour:
     m_FixedHeight: 0
     m_StretchWidth: 1
     m_StretchHeight: 0
-  indentNested: 1
-  indentHeadersOnly: 1
   separatorStyle:
     m_Name: 
     m_Normal:
@@ -274,14 +273,14 @@ MonoBehaviour:
     m_Font: {fileID: 0}
     m_FontSize: 0
     m_FontStyle: 0
-    m_Alignment: 1
+    m_Alignment: 4
     m_WordWrap: 0
     m_RichText: 1
     m_TextClipping: 0
     m_ImagePosition: 0
-    m_ContentOffset: {x: 50, y: 0}
-    m_FixedWidth: 0
-    m_FixedHeight: 0
+    m_ContentOffset: {x: 0, y: 0}
+    m_FixedWidth: 128
+    m_FixedHeight: 16
     m_StretchWidth: 0
     m_StretchHeight: 0
   leftConnectorStyle:

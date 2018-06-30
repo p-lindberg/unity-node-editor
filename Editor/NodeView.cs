@@ -14,8 +14,17 @@ public class NodeView
 
 	public NodeEditor NodeEditor { get; private set; }
 
-	public virtual GUIStyle GUIStyle { get { return NodeEditor.Settings.NodeGUIStyle; } }
+	public NodeViewSettings Settings { get { return NodeEditor.Settings.DefaultNodeViewSettings; } }
 
+	public virtual GUIStyle GUIStyle { get { return Settings.GUIStyle; } }
+
+	public class ViewParameters
+	{
+		public string name;
+		public Vector2 expandedSizeOverride;
+	}
+
+	ViewParameters viewParameters;
 	float currentPropertyHeight;
 	bool dragging;
 	Vector2 origin;
@@ -25,16 +34,25 @@ public class NodeView
 	Dictionary<string, NodeConnector> nodeConnectors = new Dictionary<string, NodeConnector>();
 	System.Action postDraw;
 
-	public NodeView(NodeEditor nodeEditor, NodeGraph.NodeData nodeData)
+	public NodeView(NodeEditor nodeEditor, NodeGraph.NodeData nodeData, ViewParameters viewParameters)
 	{
 		this.NodeEditor = nodeEditor;
 		this.nodeData = nodeData;
+		this.viewParameters = viewParameters;
 		serializedObject = new SerializedObject(nodeData.nodeObject);
 	}
 
-	Rect GetWindowRectWithoutSize()
+	Rect GetWindowRectInternal()
 	{
-		return new Rect(origin + nodeData.graphPosition, Vector2.zero);
+		var minSize = nodeData.isExpanded ? Settings.MinimumSize : Settings.MinimumSizeCollapsed;
+
+		if (nodeData.isExpanded)
+		{
+			minSize.x = viewParameters.expandedSizeOverride.x != 0 ? viewParameters.expandedSizeOverride.x : minSize.x;
+			minSize.y = viewParameters.expandedSizeOverride.y != 0 ? viewParameters.expandedSizeOverride.y : minSize.y;
+		}
+
+		return new Rect(origin + nodeData.graphPosition, minSize);
 	}
 
 	NodeConnector GetNodeConnector(string propertyPath)
@@ -57,7 +75,7 @@ public class NodeView
 	public virtual void Draw(Vector2 origin)
 	{
 		this.origin = origin;
-		var newRect = GUILayout.Window(nodeData.id, GetWindowRectWithoutSize(), (id) =>
+		var newRect = GUILayout.Window(nodeData.id, GetWindowRectInternal(), (id) =>
 		{
 			DrawContents();
 			HandleEvents();
@@ -83,10 +101,19 @@ public class NodeView
 	public virtual void HandleEvents()
 	{
 		if (Event.current.type == EventType.MouseDown && Event.current.button == 0)
+		{
+			if (Event.current.control)
+				nodeData.isExpanded = !nodeData.isExpanded;
+
 			Selection.activeObject = nodeData.nodeObject;
+		}
 		else if (Event.current.type == EventType.MouseDown && Event.current.button == 1)
 		{
 			var genericMenu = new GenericMenu();
+			genericMenu.AddItem(new GUIContent(nodeData.isExpanded ? "Collapse" : "Expand"), false, () =>
+			{
+				nodeData.isExpanded = !nodeData.isExpanded;
+			});
 			genericMenu.AddItem(new GUIContent("Delete"), false, () =>
 			{
 				nodeData.nodeGraph.DeleteNode(nodeData.nodeObject);
@@ -104,9 +131,32 @@ public class NodeView
 
 	protected virtual void DrawContents()
 	{
+		EditorGUIUtility.labelWidth = Settings.MinimumLabelWidth;
+		EditorGUIUtility.fieldWidth = Settings.MinimumFieldWidth;
+
+		if (nodeData.isExpanded)
+			DrawExpandedContents();
+		else
+			DrawCollapsedContents();
+	}
+
+	void DrawCollapsedContents()
+	{
 		EditorGUILayout.BeginVertical();
-		EditorGUIUtility.labelWidth = NodeEditor.Settings.DefaultLabelWidth;
-		EditorGUILayout.LabelField(nodeData.nodeObject.name, NodeEditor.Settings.NodeHeaderStyle);
+		GUILayout.FlexibleSpace();
+		GUILayout.Label(nodeData.nodeObject.name, Settings.NodeHeaderStyle);
+		GUILayout.FlexibleSpace();
+		EditorGUILayout.EndVertical();
+	}
+
+	void DrawExpandedContents()
+	{
+		EditorGUILayout.BeginVertical();
+		EditorGUIUtility.labelWidth = Settings.MinimumLabelWidth;
+		EditorGUIUtility.fieldWidth = Settings.MinimumFieldWidth;
+		GUILayout.Label(nodeData.nodeObject.name, Settings.NodeHeaderStyle);
+
+		GUILayout.Space(EditorGUIUtility.singleLineHeight - EditorGUIUtility.standardVerticalSpacing);
 
 		currentPropertyHeight += EditorGUIUtility.singleLineHeight + 3 * EditorGUIUtility.standardVerticalSpacing;
 
@@ -115,17 +165,11 @@ public class NodeView
 		var iterator = serializedObject.GetIterator();
 		iterator.NextVisible(true);
 
-		EditorGUILayout.BeginHorizontal();
-		GUILayout.FlexibleSpace();
-		nodeData.isExpanded = EditorGUILayout.Toggle(nodeData.isExpanded, NodeEditor.Settings.NodeContentToggleStyle);
-		GUILayout.FlexibleSpace();
-		EditorGUILayout.EndHorizontal();
-
 		currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
 
 		if (nodeData.isExpanded)
 		{
-			EditorGUILayout.BeginVertical(NodeEditor.Settings.SeparatorStyle);
+			EditorGUILayout.BeginVertical(Settings.SeparatorStyle);
 			DrawPropertiesRecursive(iterator);
 			EditorGUILayout.EndVertical();
 		}
@@ -144,19 +188,19 @@ public class NodeView
 		{
 			if (iterator.hasVisibleChildren)
 			{
-				if (NodeEditor.Settings.IndentNested)
+				if (Settings.IndentNested)
 					EditorGUI.indentLevel = iterator.depth;
 
 				iterator.isExpanded = EditorGUILayout.Foldout(iterator.isExpanded, iterator.displayName, true);
 				currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
 
-				if (NodeEditor.Settings.IndentHeadersOnly)
+				if (Settings.IndentHeadersOnly)
 					EditorGUI.indentLevel = 0;
 
 				if (iterator.isExpanded)
 				{
 					currentPropertyHeight += EditorGUIUtility.standardVerticalSpacing;
-					EditorGUILayout.BeginVertical(NodeEditor.Settings.SeparatorStyle);
+					EditorGUILayout.BeginVertical(Settings.SeparatorStyle);
 
 					var proceed = DrawPropertiesRecursive(iterator);
 
