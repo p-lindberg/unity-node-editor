@@ -66,6 +66,13 @@ public class NodeEditor : ZoomableEditorWindow
 		window.wantsMouseEnterLeaveWindow = true;
 	}
 
+	protected override void DrawUtilityBarContents()
+	{
+		base.DrawUtilityBarContents();
+		GUILayout.FlexibleSpace();
+		GUILayout.Label(CurrentTarget != null ? CurrentTarget.name : "No graph selected", Settings.GraphHeaderStyle);
+	}
+
 	[OnOpenAssetAttribute(1)]
 	public static bool OnOpenAsset(int instanceID, int line)
 	{
@@ -86,7 +93,15 @@ public class NodeEditor : ZoomableEditorWindow
 	{
 		NodeView nodeView;
 		if (nodeViews.TryGetValue(nodeData, out nodeView))
+		{
+			if (nodeView.NodeObject == null)
+			{
+				nodeViews.Remove(nodeData);
+				return GetNodeView(nodeData);
+			}
+
 			return nodeView;
+		}
 
 		var viewParameters = new NodeView.ViewParameters();
 
@@ -111,7 +126,7 @@ public class NodeEditor : ZoomableEditorWindow
 
 	void SetupNodeContextMenuItems(NodeGraphData.NodeData nodeData, GenericMenu genericMenu)
 	{
-		genericMenu.AddItem(new GUIContent("Delete"), false, () =>
+		genericMenu.AddItem(new GUIContent("Delete/Confirm"), false, () =>
 		{
 			GetNodeGraphData(CurrentTarget).DeleteNode(nodeData.nodeObject);
 			nodeViews.Remove(nodeData);
