@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using System.Linq;
+using System;
 
 // TODO: Highlight selected, highlight when mousing over a connectable node while connecting
 
@@ -20,50 +21,43 @@ public class NodeView
 
 	public UnityEngine.Object NodeObject { get { return nodeData.nodeObject; } }
 
-	public class ViewParameters
-	{
-		public string name;
-		public Vector2 expandedSizeOverride;
-	}
+	public IEnumerable<Type> ConnectionTypes { get { return connectionTypes; } }
 
-	ViewParameters viewParameters;
 	float currentPropertyHeight;
 	bool dragging;
 	Vector2 origin;
 	NodeGraphData.NodeData nodeData;
 	Vector2 size;
 	SerializedObject serializedObject;
+	HashSet<Type> connectionTypes = new HashSet<Type>();
 	Dictionary<string, NodeConnector> nodeConnectors = new Dictionary<string, NodeConnector>();
 	System.Action postDraw;
 
-	public NodeView(NodeEditor nodeEditor, NodeGraphData.NodeData nodeData, ViewParameters viewParameters)
+	public NodeView(NodeEditor nodeEditor, NodeGraphData.NodeData nodeData)
 	{
 		this.NodeEditor = nodeEditor;
 		this.nodeData = nodeData;
-		this.viewParameters = viewParameters;
 		serializedObject = new SerializedObject(nodeData.nodeObject);
+
+		var iterator = serializedObject.GetIterator();
+		if (iterator.NextVisible(true))
+			FindConnectionsRecursive(iterator);
 	}
 
 	Rect GetWindowRectInternal()
 	{
 		var minSize = nodeData.isExpanded ? Settings.MinimumSize : Settings.MinimumSizeCollapsed;
-
-		if (nodeData.isExpanded)
-		{
-			minSize.x = viewParameters.expandedSizeOverride.x != 0 ? viewParameters.expandedSizeOverride.x : minSize.x;
-			minSize.y = viewParameters.expandedSizeOverride.y != 0 ? viewParameters.expandedSizeOverride.y : minSize.y;
-		}
-
 		return new Rect(origin + nodeData.graphPosition, minSize);
 	}
 
-	NodeConnector GetNodeConnector(string propertyPath)
+	NodeConnector GetNodeConnector(string propertyPath, Type propertyType)
 	{
 		NodeConnector nodeConnector;
 		if (nodeConnectors.TryGetValue(propertyPath, out nodeConnector))
 			return nodeConnector;
 
-		nodeConnector = new NodeConnector(this, serializedObject, propertyPath);
+		nodeConnector = new NodeConnector(this, serializedObject, propertyPath, propertyType);
+		connectionTypes.Add(propertyType);
 		nodeConnector.OnDeath += () => postDraw += () => nodeConnectors.Remove(nodeConnector.PropertyPath);
 		nodeConnectors[propertyPath] = nodeConnector;
 		return nodeConnector;
@@ -95,8 +89,9 @@ public class NodeView
 
 		if (postDraw != null)
 		{
-			postDraw.Invoke();
+			var temp = postDraw;
 			postDraw = null;
+			temp.Invoke();
 		}
 	}
 
@@ -129,7 +124,7 @@ public class NodeView
 		if (OnShowContextMenu != null)
 			OnShowContextMenu.Invoke(genericMenu);
 
-		genericMenu.ShowAsContext();
+		NodeEditor.PostDraw += () => genericMenu.ShowAsContext();
 	}
 
 	public void DrawTag(string tag)
@@ -180,15 +175,16 @@ public class NodeView
 
 		serializedObject.Update();
 
-		var iterator = serializedObject.GetIterator();
-		iterator.NextVisible(true);
-
 		currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
 
 		if (nodeData.isExpanded)
 		{
 			EditorGUILayout.BeginVertical(Settings.SeparatorStyle);
-			DrawPropertiesRecursive(iterator);
+
+			var iterator = serializedObject.GetIterator();
+			if (iterator.NextVisible(true))
+				DrawPropertiesRecursive(iterator);
+
 			EditorGUILayout.EndVertical();
 		}
 
@@ -235,25 +231,47 @@ public class NodeView
 						return false;
 				}
 			}
-
 			else
 			{
 				EditorGUILayout.PropertyField(iterator, false);
+
 				if (iterator.propertyType == SerializedPropertyType.ObjectReference)
 				{
 					var propertyType = NodeEditorUtilities.GetPropertyType(iterator);
-					var nodeAttributes = propertyType.GetCustomAttributes(typeof(NodeAttribute), true).Cast<NodeAttribute>();
-					if (nodeAttributes.Any(x => x.GraphType == NodeEditor.CurrentTarget.GetType()))
-					{
-						var nodeConnector = GetNodeConnector(iterator.propertyPath);
-						nodeConnector.SetDrawProperties(currentPropertyHeight, true);
-					}
+					if (propertyType.IsSubclassOf(typeof(ScriptableObject)))
+						GetNodeConnector(iterator.propertyPath, propertyType).SetDrawProperties(currentPropertyHeight, true);
 				}
 
 				currentPropertyHeight += EditorGUI.GetPropertyHeight(iterator) + EditorGUIUtility.standardVerticalSpacing;
 			}
 
 			next = iterator.NextVisible(iterator.isExpanded);
+		}
+
+		return next;
+	}
+
+	protected bool FindConnectionsRecursive(SerializedProperty iterator)
+	{
+		bool next = iterator.NextVisible(true);
+		var depth = next != false ? iterator.depth : 0;
+		while (next && iterator.depth >= depth)
+		{
+			if (iterator.hasVisibleChildren)
+			{
+				if (FindConnectionsRecursive(iterator))
+					continue;
+				else
+					return false;
+			}
+			else if (iterator.propertyType == SerializedPropertyType.ObjectReference)
+			{
+				var propertyType = NodeEditorUtilities.GetPropertyType(iterator);
+				if (propertyType.IsSubclassOf(typeof(ScriptableObject)))
+					GetNodeConnector(iterator.propertyPath, propertyType).Initialize();
+			}
+
+			next = iterator.NextVisible(true);
 		}
 
 		return next;

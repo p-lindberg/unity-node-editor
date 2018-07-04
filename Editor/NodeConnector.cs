@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
+using System;
 
 public class NodeConnector
 {
@@ -18,13 +19,21 @@ public class NodeConnector
 	bool visible;
 	float height;
 
-	public NodeConnector(NodeView nodeView, SerializedObject serializedObject, string propertyPath)
+	public Type ConnectionType { get; private set; }
+
+	public NodeConnector(NodeView nodeView, SerializedObject serializedObject, string propertyPath, Type connectionType)
 	{
 		this.NodeView = nodeView;
 		this.serializedObject = serializedObject;
 		this.PropertyPath = propertyPath;
+		this.ConnectionType = connectionType;
 		LeftGUIStyle = new GUIStyle(NodeEditor.Settings.DefaultNodeViewSettings.LeftConnectorStyle);
 		RightGUIStyle = new GUIStyle(NodeEditor.Settings.DefaultNodeViewSettings.RightConnectorStyle);
+	}
+
+	public void Initialize()
+	{
+		ResetDrawProperties();
 	}
 
 	public void SetDrawProperties(float height, bool visible)

@@ -100,7 +100,7 @@ public class ZoomableEditorWindow : EditorWindow
 		OnHandleEvents();
 	}
 
-	public virtual void OnHandleEvents()
+	protected virtual void OnHandleEvents()
 	{
 		Debug.Log("ZoomableEditorWindow");
 	}
