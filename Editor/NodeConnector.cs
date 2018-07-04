@@ -27,6 +27,11 @@ public class NodeConnector
 		RightGUIStyle = new GUIStyle(NodeEditor.Settings.DefaultNodeViewSettings.RightConnectorStyle);
 	}
 
+	public void Initialize()
+	{
+		ResetDrawProperties();
+	}
+
 	public void SetDrawProperties(float height, bool visible)
 	{
 		this.height = height;
