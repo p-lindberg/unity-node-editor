@@ -12,4 +12,8 @@ public class NodeEditorSettings : ScriptableObject
 	[SerializeField] NodeViewSettings defaultNodeViewSettings;
 
 	public NodeViewSettings DefaultNodeViewSettings { get { return defaultNodeViewSettings; } }
+
+	[SerializeField] GUIStyle graphHeaderStyle;
+
+	public GUIStyle GraphHeaderStyle { get { return graphHeaderStyle; } }
 }
