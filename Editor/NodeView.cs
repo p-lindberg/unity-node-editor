@@ -99,8 +99,9 @@ public class NodeView
 
 		if (postDraw != null)
 		{
-			postDraw.Invoke();
+			var temp = postDraw;
 			postDraw = null;
+			temp.Invoke();
 		}
 	}
 
