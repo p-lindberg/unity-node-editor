@@ -74,7 +74,23 @@ public class NodeEditor : ZoomableEditorWindow
 		GUILayout.Label(CurrentTarget != null ? CurrentTarget.name : "No graph selected", Settings.GraphHeaderStyle);
 	}
 
-	[OnOpenAssetAttribute(1)]
+	[MenuItem("Assets/Edit in Node Editor")]
+	static void EditInNodeEditor()
+	{
+		OpenWindow(Selection.activeObject as ScriptableObject);
+	}
+
+	[MenuItem("Assets/Edit in Node Editor", true)]
+	static bool EditInNodeEditorValidate()
+	{
+		if (Selection.activeObject == null)
+			return false;
+
+		return Selection.activeObject.GetType().IsSubclassOf(typeof(ScriptableObject));
+	}
+
+	// TODO: Allow user, via a menu option, to specify that a specific type of scriptable object should be opened on double click.
+	/*[OnOpenAssetAttribute(1)]
 	public static bool OnOpenAsset(int instanceID, int line)
 	{
 		var targetObject = EditorUtility.InstanceIDToObject(instanceID) as ScriptableObject;
@@ -88,7 +104,7 @@ public class NodeEditor : ZoomableEditorWindow
 		}
 
 		return false;
-	}
+	}*/
 
 	NodeView GetNodeView(NodeGraphData.NodeData nodeData)
 	{
