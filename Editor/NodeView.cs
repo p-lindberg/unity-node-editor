@@ -99,8 +99,9 @@ public class NodeView
 
 		if (postDraw != null)
 		{
-			postDraw.Invoke();
+			var temp = postDraw;
 			postDraw = null;
+			temp.Invoke();
 		}
 	}
 
@@ -133,7 +134,7 @@ public class NodeView
 		if (OnShowContextMenu != null)
 			OnShowContextMenu.Invoke(genericMenu);
 
-		genericMenu.ShowAsContext();
+		NodeEditor.PostDraw += () => genericMenu.ShowAsContext();
 	}
 
 	public void DrawTag(string tag)
