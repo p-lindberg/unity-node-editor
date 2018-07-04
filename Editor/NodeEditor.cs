@@ -9,12 +9,13 @@ using System.Reflection;
 
 public class NodeEditor : ZoomableEditorWindow
 {
+	public event Action PostDraw;
+
 	[SerializeField] ScriptableObject currentTarget;
 
 	public ScriptableObject CurrentTarget { get { return currentTarget; } set { currentTarget = value; EditorUtility.SetDirty(this); } }
 
 	Vector2 currentMousePosition;
-
 	Dictionary<NodeGraphData.NodeData, NodeView> nodeViews = new Dictionary<NodeGraphData.NodeData, NodeView>();
 
 	static NodeEditorSettings settings;
@@ -195,7 +196,7 @@ public class NodeEditor : ZoomableEditorWindow
 		EndWindows();
 	}
 
-	public override void OnHandleEvents()
+	protected override void OnHandleEvents()
 	{
 		if (CurrentTarget == null || Settings == null)
 			return;
@@ -229,6 +230,13 @@ public class NodeEditor : ZoomableEditorWindow
 			}
 
 			Repaint();
+		}
+
+		if (PostDraw != null)
+		{
+			var temp = PostDraw;
+			PostDraw = null;
+			temp.Invoke();
 		}
 	}
 

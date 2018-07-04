@@ -134,7 +134,7 @@ public class NodeView
 		if (OnShowContextMenu != null)
 			OnShowContextMenu.Invoke(genericMenu);
 
-		genericMenu.ShowAsContext();
+		NodeEditor.PostDraw += () => genericMenu.ShowAsContext();
 	}
 
 	public void DrawTag(string tag)
