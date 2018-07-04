@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using System.Linq;
+using System;
 
 // TODO: Highlight selected, highlight when mousing over a connectable node while connecting
 
@@ -20,27 +21,22 @@ public class NodeView
 
 	public UnityEngine.Object NodeObject { get { return nodeData.nodeObject; } }
 
-	public class ViewParameters
-	{
-		public string name;
-		public Vector2 expandedSizeOverride;
-	}
+	public IEnumerable<Type> ConnectionTypes { get { return connectionTypes; } }
 
-	ViewParameters viewParameters;
 	float currentPropertyHeight;
 	bool dragging;
 	Vector2 origin;
 	NodeGraphData.NodeData nodeData;
 	Vector2 size;
 	SerializedObject serializedObject;
+	HashSet<Type> connectionTypes = new HashSet<Type>();
 	Dictionary<string, NodeConnector> nodeConnectors = new Dictionary<string, NodeConnector>();
 	System.Action postDraw;
 
-	public NodeView(NodeEditor nodeEditor, NodeGraphData.NodeData nodeData, ViewParameters viewParameters)
+	public NodeView(NodeEditor nodeEditor, NodeGraphData.NodeData nodeData)
 	{
 		this.NodeEditor = nodeEditor;
 		this.nodeData = nodeData;
-		this.viewParameters = viewParameters;
 		serializedObject = new SerializedObject(nodeData.nodeObject);
 
 		var iterator = serializedObject.GetIterator();
@@ -51,23 +47,17 @@ public class NodeView
 	Rect GetWindowRectInternal()
 	{
 		var minSize = nodeData.isExpanded ? Settings.MinimumSize : Settings.MinimumSizeCollapsed;
-
-		if (nodeData.isExpanded)
-		{
-			minSize.x = viewParameters.expandedSizeOverride.x != 0 ? viewParameters.expandedSizeOverride.x : minSize.x;
-			minSize.y = viewParameters.expandedSizeOverride.y != 0 ? viewParameters.expandedSizeOverride.y : minSize.y;
-		}
-
 		return new Rect(origin + nodeData.graphPosition, minSize);
 	}
 
-	NodeConnector GetNodeConnector(string propertyPath)
+	NodeConnector GetNodeConnector(string propertyPath, Type propertyType)
 	{
 		NodeConnector nodeConnector;
 		if (nodeConnectors.TryGetValue(propertyPath, out nodeConnector))
 			return nodeConnector;
 
-		nodeConnector = new NodeConnector(this, serializedObject, propertyPath);
+		nodeConnector = new NodeConnector(this, serializedObject, propertyPath, propertyType);
+		connectionTypes.Add(propertyType);
 		nodeConnector.OnDeath += () => postDraw += () => nodeConnectors.Remove(nodeConnector.PropertyPath);
 		nodeConnectors[propertyPath] = nodeConnector;
 		return nodeConnector;
@@ -245,8 +235,12 @@ public class NodeView
 			{
 				EditorGUILayout.PropertyField(iterator, false);
 
-				if (IsNodeInGraph(iterator))
-					GetNodeConnector(iterator.propertyPath).SetDrawProperties(currentPropertyHeight, true);
+				if (iterator.propertyType == SerializedPropertyType.ObjectReference)
+				{
+					var propertyType = NodeEditorUtilities.GetPropertyType(iterator);
+					if (propertyType.IsSubclassOf(typeof(ScriptableObject)))
+						GetNodeConnector(iterator.propertyPath, propertyType).SetDrawProperties(currentPropertyHeight, true);
+				}
 
 				currentPropertyHeight += EditorGUI.GetPropertyHeight(iterator) + EditorGUIUtility.standardVerticalSpacing;
 			}
@@ -255,16 +249,6 @@ public class NodeView
 		}
 
 		return next;
-	}
-
-	bool IsNodeInGraph(SerializedProperty property)
-	{
-		if (property.propertyType != SerializedPropertyType.ObjectReference)
-			return false;
-
-		var propertyType = NodeEditorUtilities.GetPropertyType(property);
-		var nodeAttributes = propertyType.GetCustomAttributes(typeof(NodeAttribute), true).Cast<NodeAttribute>();
-		return nodeAttributes.Any(x => x.GraphType == NodeEditor.CurrentTarget.GetType());
 	}
 
 	protected bool FindConnectionsRecursive(SerializedProperty iterator)
@@ -280,8 +264,12 @@ public class NodeView
 				else
 					return false;
 			}
-			else if (IsNodeInGraph(iterator))
-				GetNodeConnector(iterator.propertyPath).Initialize();
+			else if (iterator.propertyType == SerializedPropertyType.ObjectReference)
+			{
+				var propertyType = NodeEditorUtilities.GetPropertyType(iterator);
+				if (propertyType.IsSubclassOf(typeof(ScriptableObject)))
+					GetNodeConnector(iterator.propertyPath, propertyType).Initialize();
+			}
 
 			next = iterator.NextVisible(true);
 		}
