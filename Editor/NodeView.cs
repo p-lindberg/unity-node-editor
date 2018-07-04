@@ -42,6 +42,10 @@ public class NodeView
 		this.nodeData = nodeData;
 		this.viewParameters = viewParameters;
 		serializedObject = new SerializedObject(nodeData.nodeObject);
+
+		var iterator = serializedObject.GetIterator();
+		if (iterator.NextVisible(true))
+			FindConnectionsRecursive(iterator);
 	}
 
 	Rect GetWindowRectInternal()
@@ -180,15 +184,16 @@ public class NodeView
 
 		serializedObject.Update();
 
-		var iterator = serializedObject.GetIterator();
-		iterator.NextVisible(true);
-
 		currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
 
 		if (nodeData.isExpanded)
 		{
 			EditorGUILayout.BeginVertical(Settings.SeparatorStyle);
-			DrawPropertiesRecursive(iterator);
+
+			var iterator = serializedObject.GetIterator();
+			if (iterator.NextVisible(true))
+				DrawPropertiesRecursive(iterator);
+
 			EditorGUILayout.EndVertical();
 		}
 
@@ -235,25 +240,49 @@ public class NodeView
 						return false;
 				}
 			}
-
 			else
 			{
 				EditorGUILayout.PropertyField(iterator, false);
-				if (iterator.propertyType == SerializedPropertyType.ObjectReference)
-				{
-					var propertyType = NodeEditorUtilities.GetPropertyType(iterator);
-					var nodeAttributes = propertyType.GetCustomAttributes(typeof(NodeAttribute), true).Cast<NodeAttribute>();
-					if (nodeAttributes.Any(x => x.GraphType == NodeEditor.CurrentTarget.GetType()))
-					{
-						var nodeConnector = GetNodeConnector(iterator.propertyPath);
-						nodeConnector.SetDrawProperties(currentPropertyHeight, true);
-					}
-				}
+
+				if (IsNodeInGraph(iterator))
+					GetNodeConnector(iterator.propertyPath).SetDrawProperties(currentPropertyHeight, true);
 
 				currentPropertyHeight += EditorGUI.GetPropertyHeight(iterator) + EditorGUIUtility.standardVerticalSpacing;
 			}
 
 			next = iterator.NextVisible(iterator.isExpanded);
+		}
+
+		return next;
+	}
+
+	bool IsNodeInGraph(SerializedProperty property)
+	{
+		if (property.propertyType != SerializedPropertyType.ObjectReference)
+			return false;
+
+		var propertyType = NodeEditorUtilities.GetPropertyType(property);
+		var nodeAttributes = propertyType.GetCustomAttributes(typeof(NodeAttribute), true).Cast<NodeAttribute>();
+		return nodeAttributes.Any(x => x.GraphType == NodeEditor.CurrentTarget.GetType());
+	}
+
+	protected bool FindConnectionsRecursive(SerializedProperty iterator)
+	{
+		bool next = iterator.NextVisible(true);
+		var depth = next != false ? iterator.depth : 0;
+		while (next && iterator.depth >= depth)
+		{
+			if (iterator.hasVisibleChildren)
+			{
+				if (FindConnectionsRecursive(iterator))
+					continue;
+				else
+					return false;
+			}
+			else if (IsNodeInGraph(iterator))
+				GetNodeConnector(iterator.propertyPath).Initialize();
+
+			next = iterator.NextVisible(true);
 		}
 
 		return next;
