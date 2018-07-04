@@ -42,13 +42,10 @@ public static class NodeEditorUtilities
 			return null;
 	}
 
-	public static List<Type> GetDerivedTypes<T>(bool includeBase, bool includeAbstract)
+	public static IEnumerable<Type> GetDerivedTypes(Type baseType, bool includeBase, bool includeAbstract)
 	{
-		var baseType = typeof(T);
-		var derivedTypes = new List<Type>();
-
 		if (includeBase)
-			derivedTypes.Add(baseType);
+			yield return baseType;
 
 		foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
 			foreach (var type in assembly.GetTypes())
@@ -56,13 +53,16 @@ public static class NodeEditorUtilities
 				if (type.IsAbstract)
 				{
 					if (includeAbstract && type.IsSubclassOf(baseType))
-						derivedTypes.Add(type);
+						yield return type;
 				}
 				else if (type.IsSubclassOf(baseType))
-					derivedTypes.Add(type);
+					yield return type;
 			}
+	}
 
-		return derivedTypes;
+	public static IEnumerable<Type> GetDerivedTypes<T>(bool includeBase, bool includeAbstract)
+	{
+		return GetDerivedTypes(typeof(T), includeBase, includeAbstract);
 	}
 
 	public static Vector2 RoundVectorToIntegerValues(Vector2 vector)
