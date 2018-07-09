@@ -2,18 +2,21 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-[CreateAssetMenu(menuName = "Node Editor/Editor Settings")]
-public class NodeEditorSettings : ScriptableObject
+namespace DataDesigner
 {
-	[SerializeField] Texture2D windowBackground;
+	[CreateAssetMenu(menuName = "Node Editor/Editor Settings")]
+	public class NodeEditorSettings : ScriptableObject
+	{
+		[SerializeField] Texture2D windowBackground;
 
-	public Texture2D WindowBackground { get { return windowBackground; } }
+		public Texture2D WindowBackground { get { return windowBackground; } }
 
-	[SerializeField] NodeViewSettings defaultNodeViewSettings;
+		[SerializeField] NodeViewSettings defaultNodeViewSettings;
 
-	public NodeViewSettings DefaultNodeViewSettings { get { return defaultNodeViewSettings; } }
+		public NodeViewSettings DefaultNodeViewSettings { get { return defaultNodeViewSettings; } }
 
-	[SerializeField] GUIStyle graphHeaderStyle;
+		[SerializeField] GUIStyle graphHeaderStyle;
 
-	public GUIStyle GraphHeaderStyle { get { return graphHeaderStyle; } }
+		public GUIStyle GraphHeaderStyle { get { return graphHeaderStyle; } }
+	}
 }

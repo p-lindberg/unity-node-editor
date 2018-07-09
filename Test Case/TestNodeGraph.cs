@@ -2,9 +2,12 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-[CreateAssetMenu(menuName = "TestNodeGraph")]
-public class TestNodeGraph : ScriptableObject
+namespace DataDesigner
 {
-	public TestObjectBase rootNode;
-	public TestObjectBase secondaryRoot;
+	[CreateAssetMenu(menuName = "TestNodeGraph")]
+	public class TestNodeGraph : ScriptableObject
+	{
+		public TestObjectBase rootNode;
+		public TestObjectBase secondaryRoot;
+	}
 }
