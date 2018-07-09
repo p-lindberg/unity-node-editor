@@ -6,274 +6,276 @@ using System.Linq;
 using System;
 
 // TODO: Highlight selected, highlight when mousing over a connectable node while connecting
-
-public class NodeView
+namespace DataDesigner
 {
-	public event System.Action<GenericMenu> OnShowContextMenu;
-
-	public bool IsDead { get { return nodeData == null; } }
-
-	public NodeEditor NodeEditor { get; private set; }
-
-	public NodeViewSettings Settings { get { return NodeEditor.Settings.DefaultNodeViewSettings; } }
-
-	public virtual GUIStyle GUIStyle { get { return Settings.GUIStyle; } }
-
-	public UnityEngine.Object NodeObject { get { return nodeData.nodeObject; } }
-
-	public IEnumerable<Type> ConnectionTypes { get { return connectionTypes; } }
-
-	float currentPropertyHeight;
-	bool dragging;
-	Vector2 origin;
-	NodeGraphData.NodeData nodeData;
-	Vector2 size;
-	SerializedObject serializedObject;
-	HashSet<Type> connectionTypes = new HashSet<Type>();
-	Dictionary<string, NodeConnector> nodeConnectors = new Dictionary<string, NodeConnector>();
-	System.Action postDraw;
-
-	public NodeView(NodeEditor nodeEditor, NodeGraphData.NodeData nodeData)
+	public class NodeView
 	{
-		this.NodeEditor = nodeEditor;
-		this.nodeData = nodeData;
-		serializedObject = new SerializedObject(nodeData.nodeObject);
+		public event System.Action<GenericMenu> OnShowContextMenu;
 
-		var iterator = serializedObject.GetIterator();
-		if (iterator.NextVisible(true))
-			FindConnectionsRecursive(iterator);
-	}
+		public bool IsDead { get { return nodeData == null; } }
 
-	Rect GetWindowRectInternal()
-	{
-		var minSize = nodeData.isExpanded ? Settings.MinimumSize : Settings.MinimumSizeCollapsed;
-		return new Rect(origin + nodeData.graphPosition, minSize);
-	}
+		public NodeEditor NodeEditor { get; private set; }
 
-	NodeConnector GetNodeConnector(string propertyPath, Type propertyType)
-	{
-		NodeConnector nodeConnector;
-		if (nodeConnectors.TryGetValue(propertyPath, out nodeConnector))
-			return nodeConnector;
+		public NodeViewSettings Settings { get { return NodeEditor.Settings.DefaultNodeViewSettings; } }
 
-		nodeConnector = new NodeConnector(this, serializedObject, propertyPath, propertyType);
-		connectionTypes.Add(propertyType);
-		nodeConnector.OnDeath += () => postDraw += () => nodeConnectors.Remove(nodeConnector.PropertyPath);
-		nodeConnectors[propertyPath] = nodeConnector;
-		return nodeConnector;
-	}
+		public virtual GUIStyle GUIStyle { get { return Settings.GUIStyle; } }
 
-	public Rect GetWindowRect()
-	{
-		return new Rect(origin + nodeData.graphPosition, size);
-	}
+		public UnityEngine.Object NodeObject { get { return nodeData.nodeObject; } }
 
-	public virtual void Draw(Vector2 origin)
-	{
-		this.origin = origin;
-		var newRect = GUILayout.Window(nodeData.id, GetWindowRectInternal(), (id) =>
+		public IEnumerable<Type> ConnectionTypes { get { return connectionTypes; } }
+
+		float currentPropertyHeight;
+		bool dragging;
+		Vector2 origin;
+		NodeGraphData.NodeData nodeData;
+		Vector2 size;
+		SerializedObject serializedObject;
+		HashSet<Type> connectionTypes = new HashSet<Type>();
+		Dictionary<string, NodeConnector> nodeConnectors = new Dictionary<string, NodeConnector>();
+		System.Action postDraw;
+
+		public NodeView(NodeEditor nodeEditor, NodeGraphData.NodeData nodeData)
 		{
-			DrawContents();
-			HandleEvents();
-			GUI.DragWindow();
-		}, new GUIContent(), GUIStyle);
-
-		if (Event.current.type == EventType.Repaint)
-			size = newRect.size;
-
-		foreach (var nodeConnector in nodeConnectors.Values)
-			nodeConnector.Draw();
-
-		if (dragging)
-			nodeData.graphPosition = NodeEditorUtilities.RoundVectorToIntegerValues(newRect.position - origin);
-
-		if (postDraw != null)
-		{
-			var temp = postDraw;
-			postDraw = null;
-			temp.Invoke();
-		}
-	}
-
-	public virtual void HandleEvents()
-	{
-		if (Event.current.type == EventType.MouseDown && Event.current.button == 0)
-		{
-			if (Event.current.control)
-				nodeData.isExpanded = !nodeData.isExpanded;
-
-			Selection.activeObject = nodeData.nodeObject;
-		}
-		else if (Event.current.type == EventType.MouseDown && Event.current.button == 1)
-		{
-			DrawRightClickContextMenu();
-			Event.current.Use();
-		}
-
-		dragging = Event.current.type == EventType.MouseDrag;
-	}
-
-	void DrawRightClickContextMenu()
-	{
-		var genericMenu = new GenericMenu();
-		genericMenu.AddItem(new GUIContent(nodeData.isExpanded ? "Collapse" : "Expand"), false, () =>
-		{
-			nodeData.isExpanded = !nodeData.isExpanded;
-		});
-
-		if (OnShowContextMenu != null)
-			OnShowContextMenu.Invoke(genericMenu);
-
-		NodeEditor.PostDraw += () => genericMenu.ShowAsContext();
-	}
-
-	public void DrawTag(string tag)
-	{
-		var labelRect = GetWindowRect();
-		labelRect.position = new Vector2(labelRect.position.x, labelRect.position.y - 2 * EditorGUIUtility.singleLineHeight);
-		labelRect.height = 2 * EditorGUIUtility.singleLineHeight;
-		GUILayout.BeginArea(labelRect, "");
-		GUILayout.FlexibleSpace();
-		GUILayout.BeginHorizontal();
-		GUILayout.FlexibleSpace();
-		GUILayout.Label(tag, Settings.TagStyle);
-		GUILayout.FlexibleSpace();
-		GUILayout.EndHorizontal();
-		GUILayout.EndArea();
-	}
-
-	protected virtual void DrawContents()
-	{
-		EditorGUIUtility.labelWidth = Settings.MinimumLabelWidth;
-		EditorGUIUtility.fieldWidth = Settings.MinimumFieldWidth;
-
-		if (nodeData.isExpanded)
-			DrawExpandedContents();
-		else
-			DrawCollapsedContents();
-	}
-
-	void DrawCollapsedContents()
-	{
-		EditorGUILayout.BeginVertical();
-		GUILayout.FlexibleSpace();
-		GUILayout.Label(nodeData.nodeObject.name, Settings.NodeHeaderStyle);
-		GUILayout.FlexibleSpace();
-		EditorGUILayout.EndVertical();
-	}
-
-	void DrawExpandedContents()
-	{
-		EditorGUILayout.BeginVertical();
-		EditorGUIUtility.labelWidth = Settings.MinimumLabelWidth;
-		EditorGUIUtility.fieldWidth = Settings.MinimumFieldWidth;
-		GUILayout.Label(nodeData.nodeObject.name, Settings.NodeHeaderStyle);
-
-		GUILayout.Space(EditorGUIUtility.singleLineHeight - EditorGUIUtility.standardVerticalSpacing);
-
-		currentPropertyHeight += EditorGUIUtility.singleLineHeight + 3 * EditorGUIUtility.standardVerticalSpacing;
-
-		serializedObject.Update();
-
-		currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
-
-		if (nodeData.isExpanded)
-		{
-			EditorGUILayout.BeginVertical(Settings.SeparatorStyle);
+			this.NodeEditor = nodeEditor;
+			this.nodeData = nodeData;
+			serializedObject = new SerializedObject(nodeData.nodeObject);
 
 			var iterator = serializedObject.GetIterator();
 			if (iterator.NextVisible(true))
-				DrawPropertiesRecursive(iterator);
+				FindConnectionsRecursive(iterator);
+		}
 
+		Rect GetWindowRectInternal()
+		{
+			var minSize = nodeData.isExpanded ? Settings.MinimumSize : Settings.MinimumSizeCollapsed;
+			return new Rect(origin + nodeData.graphPosition, minSize);
+		}
+
+		NodeConnector GetNodeConnector(string propertyPath, Type propertyType)
+		{
+			NodeConnector nodeConnector;
+			if (nodeConnectors.TryGetValue(propertyPath, out nodeConnector))
+				return nodeConnector;
+
+			nodeConnector = new NodeConnector(this, serializedObject, propertyPath, propertyType);
+			connectionTypes.Add(propertyType);
+			nodeConnector.OnDeath += () => postDraw += () => nodeConnectors.Remove(nodeConnector.PropertyPath);
+			nodeConnectors[propertyPath] = nodeConnector;
+			return nodeConnector;
+		}
+
+		public Rect GetWindowRect()
+		{
+			return new Rect(origin + nodeData.graphPosition, size);
+		}
+
+		public virtual void Draw(Vector2 origin)
+		{
+			this.origin = origin;
+			var newRect = GUILayout.Window(nodeData.id, GetWindowRectInternal(), (id) =>
+				{
+					DrawContents();
+					HandleEvents();
+					GUI.DragWindow();
+				}, new GUIContent(), GUIStyle);
+
+			if (Event.current.type == EventType.Repaint)
+				size = newRect.size;
+
+			foreach (var nodeConnector in nodeConnectors.Values)
+				nodeConnector.Draw();
+
+			if (dragging)
+				nodeData.graphPosition = NodeEditorUtilities.RoundVectorToIntegerValues(newRect.position - origin);
+
+			if (postDraw != null)
+			{
+				var temp = postDraw;
+				postDraw = null;
+				temp.Invoke();
+			}
+		}
+
+		public virtual void HandleEvents()
+		{
+			if (Event.current.type == EventType.MouseDown && Event.current.button == 0)
+			{
+				if (Event.current.control)
+					nodeData.isExpanded = !nodeData.isExpanded;
+
+				Selection.activeObject = nodeData.nodeObject;
+			}
+			else if (Event.current.type == EventType.MouseDown && Event.current.button == 1)
+			{
+				DrawRightClickContextMenu();
+				Event.current.Use();
+			}
+
+			dragging = Event.current.type == EventType.MouseDrag;
+		}
+
+		void DrawRightClickContextMenu()
+		{
+			var genericMenu = new GenericMenu();
+			genericMenu.AddItem(new GUIContent(nodeData.isExpanded ? "Collapse" : "Expand"), false, () =>
+				{
+					nodeData.isExpanded = !nodeData.isExpanded;
+				});
+
+			if (OnShowContextMenu != null)
+				OnShowContextMenu.Invoke(genericMenu);
+
+			NodeEditor.PostDraw += () => genericMenu.ShowAsContext();
+		}
+
+		public void DrawTag(string tag)
+		{
+			var labelRect = GetWindowRect();
+			labelRect.position = new Vector2(labelRect.position.x, labelRect.position.y - 2 * EditorGUIUtility.singleLineHeight);
+			labelRect.height = 2 * EditorGUIUtility.singleLineHeight;
+			GUILayout.BeginArea(labelRect, "");
+			GUILayout.FlexibleSpace();
+			GUILayout.BeginHorizontal();
+			GUILayout.FlexibleSpace();
+			GUILayout.Label(tag, Settings.TagStyle);
+			GUILayout.FlexibleSpace();
+			GUILayout.EndHorizontal();
+			GUILayout.EndArea();
+		}
+
+		protected virtual void DrawContents()
+		{
+			EditorGUIUtility.labelWidth = Settings.MinimumLabelWidth;
+			EditorGUIUtility.fieldWidth = Settings.MinimumFieldWidth;
+
+			if (nodeData.isExpanded)
+				DrawExpandedContents();
+			else
+				DrawCollapsedContents();
+		}
+
+		void DrawCollapsedContents()
+		{
+			EditorGUILayout.BeginVertical();
+			GUILayout.FlexibleSpace();
+			GUILayout.Label(nodeData.nodeObject.name, Settings.NodeHeaderStyle);
+			GUILayout.FlexibleSpace();
 			EditorGUILayout.EndVertical();
 		}
 
-		serializedObject.ApplyModifiedProperties();
-		EditorGUILayout.EndVertical();
-
-		currentPropertyHeight = 0f;
-	}
-
-	protected bool DrawPropertiesRecursive(SerializedProperty iterator)
-	{
-		bool next = iterator.NextVisible(true);
-		var depth = next != false ? iterator.depth : 0;
-		while (next && iterator.depth >= depth)
+		void DrawExpandedContents()
 		{
-			if (iterator.hasVisibleChildren)
+			EditorGUILayout.BeginVertical();
+			EditorGUIUtility.labelWidth = Settings.MinimumLabelWidth;
+			EditorGUIUtility.fieldWidth = Settings.MinimumFieldWidth;
+			GUILayout.Label(nodeData.nodeObject.name, Settings.NodeHeaderStyle);
+
+			GUILayout.Space(EditorGUIUtility.singleLineHeight - EditorGUIUtility.standardVerticalSpacing);
+
+			currentPropertyHeight += EditorGUIUtility.singleLineHeight + 3 * EditorGUIUtility.standardVerticalSpacing;
+
+			serializedObject.Update();
+
+			currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
+
+			if (nodeData.isExpanded)
 			{
-				if (Settings.IndentNested)
-					EditorGUI.indentLevel = iterator.depth;
+				EditorGUILayout.BeginVertical(Settings.SeparatorStyle);
 
-				iterator.isExpanded = EditorGUILayout.Foldout(iterator.isExpanded, iterator.displayName, true);
-				currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
+				var iterator = serializedObject.GetIterator();
+				if (iterator.NextVisible(true))
+					DrawPropertiesRecursive(iterator);
 
-				if (Settings.IndentHeadersOnly)
-					EditorGUI.indentLevel = 0;
+				EditorGUILayout.EndVertical();
+			}
 
-				if (iterator.isExpanded)
+			serializedObject.ApplyModifiedProperties();
+			EditorGUILayout.EndVertical();
+
+			currentPropertyHeight = 0f;
+		}
+
+		protected bool DrawPropertiesRecursive(SerializedProperty iterator)
+		{
+			bool next = iterator.NextVisible(true);
+			var depth = next != false ? iterator.depth : 0;
+			while (next && iterator.depth >= depth)
+			{
+				if (iterator.hasVisibleChildren)
 				{
-					currentPropertyHeight += EditorGUIUtility.standardVerticalSpacing;
-					EditorGUILayout.BeginVertical(Settings.SeparatorStyle);
+					if (Settings.IndentNested)
+						EditorGUI.indentLevel = iterator.depth;
 
-					var proceed = DrawPropertiesRecursive(iterator);
+					iterator.isExpanded = EditorGUILayout.Foldout(iterator.isExpanded, iterator.displayName, true);
+					currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
 
-					EditorGUILayout.EndVertical();
+					if (Settings.IndentHeadersOnly)
+						EditorGUI.indentLevel = 0;
 
-					if (proceed)
+					if (iterator.isExpanded)
 					{
-						if (depth == iterator.depth)
-							currentPropertyHeight += EditorGUIUtility.standardVerticalSpacing;
+						currentPropertyHeight += EditorGUIUtility.standardVerticalSpacing;
+						EditorGUILayout.BeginVertical(Settings.SeparatorStyle);
 
-						continue;
+						var proceed = DrawPropertiesRecursive(iterator);
+
+						EditorGUILayout.EndVertical();
+
+						if (proceed)
+						{
+							if (depth == iterator.depth)
+								currentPropertyHeight += EditorGUIUtility.standardVerticalSpacing;
+
+							continue;
+						}
+						else
+							return false;
 					}
+				}
+				else
+				{
+					EditorGUILayout.PropertyField(iterator, false);
+
+					if (iterator.propertyType == SerializedPropertyType.ObjectReference)
+					{
+						var propertyType = NodeEditorUtilities.GetPropertyType(iterator);
+						if (propertyType.IsSubclassOf(typeof(ScriptableObject)))
+							GetNodeConnector(iterator.propertyPath, propertyType).SetDrawProperties(currentPropertyHeight, true);
+					}
+
+					currentPropertyHeight += EditorGUI.GetPropertyHeight(iterator) + EditorGUIUtility.standardVerticalSpacing;
+				}
+
+				next = iterator.NextVisible(iterator.isExpanded);
+			}
+
+			return next;
+		}
+
+		protected bool FindConnectionsRecursive(SerializedProperty iterator)
+		{
+			bool next = iterator.NextVisible(true);
+			var depth = next != false ? iterator.depth : 0;
+			while (next && iterator.depth >= depth)
+			{
+				if (iterator.hasVisibleChildren)
+				{
+					if (FindConnectionsRecursive(iterator))
+						continue;
 					else
 						return false;
 				}
-			}
-			else
-			{
-				EditorGUILayout.PropertyField(iterator, false);
-
-				if (iterator.propertyType == SerializedPropertyType.ObjectReference)
+				else if (iterator.propertyType == SerializedPropertyType.ObjectReference)
 				{
 					var propertyType = NodeEditorUtilities.GetPropertyType(iterator);
 					if (propertyType.IsSubclassOf(typeof(ScriptableObject)))
-						GetNodeConnector(iterator.propertyPath, propertyType).SetDrawProperties(currentPropertyHeight, true);
+						GetNodeConnector(iterator.propertyPath, propertyType).Initialize();
 				}
 
-				currentPropertyHeight += EditorGUI.GetPropertyHeight(iterator) + EditorGUIUtility.standardVerticalSpacing;
+				next = iterator.NextVisible(true);
 			}
 
-			next = iterator.NextVisible(iterator.isExpanded);
+			return next;
 		}
-
-		return next;
-	}
-
-	protected bool FindConnectionsRecursive(SerializedProperty iterator)
-	{
-		bool next = iterator.NextVisible(true);
-		var depth = next != false ? iterator.depth : 0;
-		while (next && iterator.depth >= depth)
-		{
-			if (iterator.hasVisibleChildren)
-			{
-				if (FindConnectionsRecursive(iterator))
-					continue;
-				else
-					return false;
-			}
-			else if (iterator.propertyType == SerializedPropertyType.ObjectReference)
-			{
-				var propertyType = NodeEditorUtilities.GetPropertyType(iterator);
-				if (propertyType.IsSubclassOf(typeof(ScriptableObject)))
-					GetNodeConnector(iterator.propertyPath, propertyType).Initialize();
-			}
-
-			next = iterator.NextVisible(true);
-		}
-
-		return next;
 	}
 }
