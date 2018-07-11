@@ -41,20 +41,11 @@ namespace DataDesigner
 
 		public int NodeCount { get { return nodes.Count; } }
 
+		[SerializeField] UnityEngine.Object graphObject;
+
 		#if UNITY_EDITOR
 
-		UnityEngine.Object graphObject;
-
-		public UnityEngine.Object GraphObject
-		{
-			get
-			{
-				if (graphObject == null)
-					graphObject = AssetDatabase.LoadMainAssetAtPath(AssetDatabase.GetAssetPath(this));
-
-				return graphObject;
-			}
-		}
+		public UnityEngine.Object GraphObject { get { return graphObject; } }
 
 		public UnityEngine.Object CreateNode(Type nodeType, Vector2 position, string name)
 		{
@@ -67,8 +58,6 @@ namespace DataDesigner
 			nodes.Add(new NodeData() { id = GetUniqueNodeID(), nodeObject = node, graphPosition = position });
 
 			AssetDatabase.AddObjectToAsset(node, GraphObject);
-			EditorUtility.SetDirty(GraphObject);
-			AssetDatabase.SaveAssets();
 			return node;
 		}
 
@@ -77,16 +66,10 @@ namespace DataDesigner
 			return Nodes.Count() == 0 ? 0 : Nodes.Max(x => x.id) + 1;
 		}
 
-		public void DeleteNode(UnityEngine.Object node)
+		public void RemoveNode(UnityEngine.Object node)
 		{
 			if (nodes.Exists(x => x.nodeObject == node))
-			{
-				Undo.RecordObjects(new UnityEngine.Object[] { GraphObject, node, this }, "Removed node from graph.");
 				nodes.RemoveAll(x => x.nodeObject == node);
-				Undo.DestroyObjectImmediate(node);
-				EditorUtility.SetDirty(GraphObject);
-				AssetDatabase.SaveAssets();
-			}
 		}
 		#endif
 	}

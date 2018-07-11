@@ -13,9 +13,9 @@ namespace DataDesigner
 	{
 		public event Action PostDraw;
 
-		[SerializeField] ScriptableObject currentTarget;
+		[SerializeField] UnityEngine.Object currentTarget;
 
-		public ScriptableObject CurrentTarget
+		public UnityEngine.Object CurrentTarget
 		{
 			get { return currentTarget; }
 			set
@@ -67,14 +67,20 @@ namespace DataDesigner
 			OpenWindow(null);
 		}
 
-		public static void OpenWindow(ScriptableObject target)
+		public static void OpenWindow(UnityEngine.Object target)
 		{
 			var window = Init<NodeEditor>("Node Editor");
 			if (target != null)
 				window.CurrentTarget = target;
 
+			window.Reset();
 			window.wantsMouseMove = true;
 			window.wantsMouseEnterLeaveWindow = true;
+		}
+
+		void Reset()
+		{
+			nodeViews = new Dictionary<NodeGraphData.NodeData, NodeView>();
 		}
 
 		protected override void DrawUtilityBarContents()
@@ -87,7 +93,7 @@ namespace DataDesigner
 		[MenuItem("Assets/Edit in Node Editor")]
 		static void EditInNodeEditor()
 		{
-			OpenWindow(Selection.activeObject as ScriptableObject);
+			OpenWindow(Selection.activeObject);
 		}
 
 		[MenuItem("Assets/Edit in Node Editor", true)]
@@ -103,7 +109,7 @@ namespace DataDesigner
 		/*[OnOpenAssetAttribute(1)]
 	public static bool OnOpenAsset(int instanceID, int line)
 	{
-		var targetObject = EditorUtility.InstanceIDToObject(instanceID) as ScriptableObject;
+		var targetObject = EditorUtility.InstanceIDToObject(instanceID);
 		if (targetObject != null)
 		{
 			if (targetObject.GetType().GetCustomAttributes(typeof(NodeGraphAttribute), true).Count() == 0)
@@ -130,7 +136,8 @@ namespace DataDesigner
 				return nodeView;
 			}
 
-			var newNodeView = new NodeView(this, nodeData);
+			var nodeGraphData = GetNodeGraphData(nodeData.nodeObject, createIfMissing: false);
+			var newNodeView = new NodeView(this, nodeData, isSubGraph: nodeGraphData != null);
 			SetupNodeView(newNodeView, nodeData);
 			nodeViews[nodeData] = newNodeView;
 			return newNodeView;
@@ -145,9 +152,30 @@ namespace DataDesigner
 		{
 			genericMenu.AddItem(new GUIContent("Delete/Confirm"), false, () =>
 				{
-					GetNodeGraphData(CurrentTarget).DeleteNode(nodeData.nodeObject);
-					nodeViews.Remove(nodeData);
+					DeleteNode(nodeData);
 				});
+
+			var nodeGraphData = GetNodeGraphData(nodeData.nodeObject, createIfMissing: false);
+			if (nodeGraphData == null)
+			{
+				genericMenu.AddItem(new GUIContent("Convert to subgraph"), false, () =>
+					{
+						nodeGraphData = GetNodeGraphData(nodeData.nodeObject);
+						nodeViews.Remove(nodeData);
+					});	
+			}
+			else
+			{
+				genericMenu.AddItem(new GUIContent("Subgraph/Edit"), false, () =>
+					{
+						OpenWindow(nodeData.nodeObject);
+					});
+
+				/*genericMenu.AddItem(new GUIContent("Subgraph/Extract/Confirm"), false, () =>
+					{
+						// TODO: Implement.
+					});*/
+			}
 
 			foreach (var scriptableObject in GetSerializedScriptableObjectFields())
 			{
@@ -156,9 +184,45 @@ namespace DataDesigner
 						{
 							Undo.RecordObject(CurrentTarget, "Changed exposed node");
 							scriptableObject.SetValue(CurrentTarget, nodeData.nodeObject);
-							EditorUtility.SetDirty(CurrentTarget);
+							SaveAllChanges(CurrentTarget);
 						});
 			}
+		}
+
+		void DeleteNode(NodeGraphData.NodeData nodeData)
+		{
+			var nodeGraphData = GetNodeGraphData(nodeData.nodeObject, createIfMissing: false);
+
+			RecordGraphUndoState(CurrentTarget, "Deleted node");
+			GetNodeGraphData(CurrentTarget).RemoveNode(nodeData.nodeObject);
+			nodeViews.Remove(nodeData);
+			Undo.DestroyObjectImmediate(nodeData.nodeObject);
+
+			if (nodeGraphData != null)
+			{
+				foreach (var nestedNode in nodeGraphData.Nodes)
+				{
+					nodeViews.Remove(nestedNode);
+					Undo.DestroyObjectImmediate(nestedNode.nodeObject);
+				}
+
+				Undo.DestroyObjectImmediate(nodeGraphData);
+			}
+
+			SaveAllChanges(CurrentTarget);
+		}
+
+		static void SaveAllChanges(UnityEngine.Object graph)
+		{
+			foreach (var subAsset in AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(graph)))
+				EditorUtility.SetDirty(subAsset);
+			
+			AssetDatabase.SaveAssets();
+		}
+
+		static void RecordGraphUndoState(UnityEngine.Object graph, string undoMessage)
+		{
+			Undo.RecordObjects(AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(graph)), undoMessage);
 		}
 
 		IEnumerable<FieldInfo> GetSerializedScriptableObjectFields()
@@ -168,16 +232,22 @@ namespace DataDesigner
 					yield return field;
 		}
 
-		NodeGraphData GetNodeGraphData(ScriptableObject scriptableObject)
+		NodeGraphData GetNodeGraphData(UnityEngine.Object graph, bool createIfMissing = true)
 		{
-			var nodeGraphData = AssetDatabase.LoadAssetAtPath<NodeGraphData>(AssetDatabase.GetAssetPath(scriptableObject));
-			if (nodeGraphData == null)
+			var subAssets = AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(graph));
+			var nodeGraphData = subAssets.OfType<NodeGraphData>().FirstOrDefault(x => x.GraphObject == graph);
+			if (nodeGraphData == null && createIfMissing)
 			{
 				nodeGraphData = ScriptableObject.CreateInstance<NodeGraphData>();
 				nodeGraphData.name = "Node Graph Data";
-				AssetDatabase.AddObjectToAsset(nodeGraphData, scriptableObject);
-				EditorUtility.SetDirty(scriptableObject);
-				AssetDatabase.SaveAssets();
+
+				var serializedObject = new SerializedObject(nodeGraphData);
+				var graphObject = serializedObject.FindProperty("graphObject");
+				graphObject.objectReferenceValue = graph;
+				serializedObject.ApplyModifiedPropertiesWithoutUndo();
+				AssetDatabase.AddObjectToAsset(nodeGraphData, graph);
+				Undo.RegisterCreatedObjectUndo(nodeGraphData, "Converted node into a graph");
+				SaveAllChanges(graph);
 			}
 
 			return nodeGraphData;
@@ -218,6 +288,7 @@ namespace DataDesigner
 						{
 							var nodePosition = NodeEditorUtilities.RoundVectorToIntegerValues(ConvertScreenCoordsToZoomCoords(mousePosition));
 							GetNodeGraphData(CurrentTarget).CreateNode(connectableType, nodePosition, connectableType.Name);
+							SaveAllChanges(CurrentTarget);
 						});
 				}
 
@@ -230,9 +301,7 @@ namespace DataDesigner
 			else if (Event.current.type == EventType.ValidateCommand)
 			{
 				if (Event.current.commandName == "UndoRedoPerformed")
-				{
-					AssetDatabase.SaveAssets();
-				}
+					SaveAllChanges(CurrentTarget);
 
 				Repaint();
 			}
