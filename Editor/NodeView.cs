@@ -201,11 +201,11 @@ namespace DataDesigner
 			var depth = next != false ? iterator.depth : 0;
 			while (next && iterator.depth >= depth)
 			{
+				if (Settings.IndentNested)
+					EditorGUI.indentLevel = iterator.depth;
+				
 				if (iterator.hasVisibleChildren)
 				{
-					if (Settings.IndentNested)
-						EditorGUI.indentLevel = iterator.depth;
-
 					iterator.isExpanded = EditorGUILayout.Foldout(iterator.isExpanded, iterator.displayName, true);
 					currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
 
