@@ -33,13 +33,11 @@ namespace DataDesigner
 		HashSet<Type> connectionTypes = new HashSet<Type>();
 		Dictionary<string, NodeConnector> nodeConnectors = new Dictionary<string, NodeConnector>();
 		System.Action postDraw;
-		bool isSubGraph;
 
-		public NodeView(NodeEditor nodeEditor, NodeGraphData.NodeData nodeData, bool isSubGraph)
+		public NodeView(NodeEditor nodeEditor, NodeGraphData.NodeData nodeData)
 		{
 			this.NodeEditor = nodeEditor;
 			this.nodeData = nodeData;
-			this.isSubGraph = isSubGraph;
 			serializedObject = new SerializedObject(nodeData.nodeObject);
 
 			var iterator = serializedObject.GetIterator();
@@ -84,9 +82,8 @@ namespace DataDesigner
 			if (Event.current.type == EventType.Repaint)
 				size = newRect.size;
 
-			if (!isSubGraph)
-				foreach (var nodeConnector in nodeConnectors.Values)
-					nodeConnector.Draw();
+			foreach (var nodeConnector in nodeConnectors.Values)
+				nodeConnector.Draw();
 
 			if (dragging)
 				nodeData.graphPosition = NodeEditorUtilities.RoundVectorToIntegerValues(newRect.position - origin);

@@ -135,9 +135,8 @@ namespace DataDesigner
 
 				return nodeView;
 			}
-
-			var nodeGraphData = GetNodeGraphData(nodeData.nodeObject, createIfMissing: false);
-			var newNodeView = new NodeView(this, nodeData, isSubGraph: nodeGraphData != null);
+				
+			var newNodeView = new NodeView(this, nodeData);
 			SetupNodeView(newNodeView, nodeData);
 			nodeViews[nodeData] = newNodeView;
 			return newNodeView;
