@@ -45,6 +45,21 @@ namespace DataDesigner
 
 		#if UNITY_EDITOR
 
+		public bool IncludeGraphAsNode
+		{
+			get
+			{
+				return nodes.Exists(x => x.nodeObject == graphObject);
+			}
+			set
+			{
+				if (value && !IncludeGraphAsNode)
+					nodes.Add(new NodeData() { id = 0, nodeObject = graphObject, graphPosition = Vector2.zero, isExpanded = false });
+				else if (!value && IncludeGraphAsNode)
+					nodes.RemoveAll(x => x.nodeObject == graphObject);
+			}
+		}
+
 		public UnityEngine.Object GraphObject { get { return graphObject; } }
 
 		public UnityEngine.Object CreateNode(Type nodeType, Vector2 position, string name)
@@ -63,7 +78,7 @@ namespace DataDesigner
 
 		int GetUniqueNodeID()
 		{
-			return Nodes.Count() == 0 ? 0 : Nodes.Max(x => x.id) + 1;
+			return Nodes.Count() == 0 ? 1 : Nodes.Max(x => x.id) + 1;
 		}
 
 		public void RemoveNode(UnityEngine.Object node)
