@@ -27,6 +27,7 @@ namespace DataDesigner
 
 		Vector2 currentMousePosition;
 		Dictionary<NodeGraphData.NodeData, NodeView> nodeViews = new Dictionary<NodeGraphData.NodeData, NodeView>();
+		Dictionary<UnityEngine.Object, NodeGraphData> nodeGraphDataMap = new Dictionary<UnityEngine.Object, NodeGraphData>();
 
 		static NodeEditorSettings settings;
 
@@ -233,20 +234,33 @@ namespace DataDesigner
 
 		NodeGraphData GetNodeGraphData(UnityEngine.Object graph, bool createIfMissing = true)
 		{
-			var subAssets = AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(graph));
-			var nodeGraphData = subAssets.OfType<NodeGraphData>().FirstOrDefault(x => x.GraphObject == graph);
-			if (nodeGraphData == null && createIfMissing)
+			NodeGraphData nodeGraphData = null;
+			if (!nodeGraphDataMap.TryGetValue(graph, out nodeGraphData))
 			{
-				nodeGraphData = ScriptableObject.CreateInstance<NodeGraphData>();
-				nodeGraphData.name = "Node Graph Data";
+				var subAssets = AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(graph));
+				nodeGraphData = subAssets.OfType<NodeGraphData>().FirstOrDefault(x => x.GraphObject == graph);
+				if (nodeGraphData == null && createIfMissing)
+				{
+					nodeGraphData = ScriptableObject.CreateInstance<NodeGraphData>();
+					nodeGraphData.name = "Node Graph Data";
 
-				var serializedObject = new SerializedObject(nodeGraphData);
-				var graphObject = serializedObject.FindProperty("graphObject");
-				graphObject.objectReferenceValue = graph;
-				serializedObject.ApplyModifiedPropertiesWithoutUndo();
-				AssetDatabase.AddObjectToAsset(nodeGraphData, graph);
-				Undo.RegisterCreatedObjectUndo(nodeGraphData, "Converted node into a graph");
-				SaveAllChanges(graph);
+					var serializedObject = new SerializedObject(nodeGraphData);
+					var graphObject = serializedObject.FindProperty("graphObject");
+					graphObject.objectReferenceValue = graph;
+					serializedObject.ApplyModifiedPropertiesWithoutUndo();
+
+					AssetDatabase.AddObjectToAsset(nodeGraphData, graph);
+					Undo.RegisterCreatedObjectUndo(nodeGraphData, "Converted node into a graph");
+					SaveAllChanges(graph);
+				}
+
+				if (nodeGraphData != null)
+				{
+					var graphType = graph.GetType();
+					var graphAttribute = graphType.GetCustomAttributes(typeof(GraphAttribute), true).FirstOrDefault() as GraphAttribute;
+					nodeGraphData.IncludeGraphAsNode = graphAttribute != null ? graphAttribute.ShowInDiagram : false;
+					nodeGraphDataMap[graph] = nodeGraphData;
+				}
 			}
 
 			return nodeGraphData;
