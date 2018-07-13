@@ -11,12 +11,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a005eacf069bd7349b97ee309fc673bc, type: 3}
   m_Name: Default Node View Settings
   m_EditorClassIdentifier: 
-  minimumSize: {x: 180, y: 0}
+  minimumSize: {x: 280, y: 0}
   minimumSizeCollapsed: {x: 180, y: 0}
   minimumLabelWidth: 100
   minimumFieldWidth: 20
   indentNested: 1
-  indentHeadersOnly: 1
+  indentHeadersOnly: 0
   guiStyle:
     m_Name: 
     m_Normal:
@@ -154,7 +154,7 @@ MonoBehaviour:
   separatorStyle:
     m_Name: 
     m_Normal:
-      m_Background: {fileID: 2800000, guid: 75624a7c6be397e4eacecb1b47a71ab3, type: 3}
+      m_Background: {fileID: 0}
       m_ScaledBackgrounds: []
       m_TextColor: {r: 0, g: 0, b: 0, a: 1}
     m_Hover:
