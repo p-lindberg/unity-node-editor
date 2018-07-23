@@ -16,13 +16,7 @@ namespace DataDesigner
 		public static Type GetPropertyType(SerializedProperty property)
 		{
 			var typeName = GetPropertyTypeName(property);
-			var type = GetTypeByName(typeName);
-			if (type == null)
-				type = GetTypeByName("UnityEngine." + typeName);
-
-			// SerializedProperty.type does not include the namespace, at least for Unity types.
-
-			return type;
+			return GetTypeByName(typeName);
 		}
 
 		public static string GetPropertyTypeName(SerializedProperty property)
@@ -34,12 +28,22 @@ namespace DataDesigner
 			return type;
 		}
 
+		static Dictionary<string, Type> typeCache = new Dictionary<string, Type>();
+
 		public static Type GetTypeByName(string typeName)
 		{
+			Type cachedType;
+			if (typeCache.TryGetValue(typeName, out cachedType))
+				return cachedType;
+
 			var loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies();
-			HashSet<Type> matchingTypes = new HashSet<Type>(loadedAssemblies.Select(x => x.GetType(typeName)).Where(x => x != null));
+			HashSet<Type> matchingTypes = new HashSet<Type>(loadedAssemblies.SelectMany(x => x.GetTypes().Where(y => y.Name == typeName)));
 			if (matchingTypes.Count == 1)
-				return matchingTypes.First();
+			{
+				var foundType = matchingTypes.First();
+				typeCache[typeName] = foundType;
+				return foundType;
+			}
 			else
 				return null;
 		}
