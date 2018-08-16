@@ -291,22 +291,32 @@ namespace DataDesigner
 			if (CurrentTarget == null || Settings == null)
 				return;
 
-			if (Event.current.type == EventType.MouseDown && Event.current.button == 1)
+			if (Event.current.type == EventType.MouseDown)
 			{
-				var genericMenu = new GenericMenu();
-				var mousePosition = Event.current.mousePosition;
-				foreach (var connectableType in GetConnectableTypes())
+				if (Event.current.button == 0)
 				{
-					genericMenu.AddItem(new GUIContent("Create/" + connectableType.Name), false, () =>
-						{
-							var nodePosition = NodeEditorUtilities.RoundVectorToIntegerValues(ConvertScreenCoordsToZoomCoords(mousePosition));
-							GetNodeGraphData(CurrentTarget).CreateNode(connectableType, nodePosition, connectableType.Name);
-							SaveAllChanges(CurrentTarget);
-						});
-				}
+					foreach (var nodeView in nodeViews.Values)
+						nodeView.ResetFocus();
 
-				genericMenu.ShowAsContext();
-				Event.current.Use();
+					Event.current.Use();
+				}
+				else if (Event.current.button == 1)
+				{
+					var genericMenu = new GenericMenu();
+					var mousePosition = Event.current.mousePosition;
+					foreach (var connectableType in GetConnectableTypes())
+					{
+						genericMenu.AddItem(new GUIContent("Create/" + connectableType.Name), false, () =>
+							{
+								var nodePosition = NodeEditorUtilities.RoundVectorToIntegerValues(ConvertScreenCoordsToZoomCoords(mousePosition));
+								GetNodeGraphData(CurrentTarget).CreateNode(connectableType, nodePosition, connectableType.Name);
+								SaveAllChanges(CurrentTarget);
+							});
+					}
+
+					genericMenu.ShowAsContext();
+					Event.current.Use();
+				}
 			}
 			else if (Event.current.type == EventType.MouseMove
 			         || Event.current.type == EventType.MouseDrag)

@@ -33,6 +33,7 @@ namespace DataDesigner
 		HashSet<Type> connectionTypes = new HashSet<Type>();
 		Dictionary<string, NodeConnector> nodeConnectors = new Dictionary<string, NodeConnector>();
 		System.Action postDraw;
+		bool renaming;
 
 		public NodeView(NodeEditor nodeEditor, NodeGraphData.NodeData nodeData)
 		{
@@ -154,11 +155,39 @@ namespace DataDesigner
 				DrawCollapsedContents();
 		}
 
+		void DrawHeader()
+		{
+			if (renaming)
+			{
+				nodeData.nodeObject.name = EditorGUILayout.TextField(nodeData.nodeObject.name);
+
+				if (Event.current.type == EventType.KeyUp && Event.current.keyCode == KeyCode.Return)
+				{
+					renaming = false;
+					Event.current.Use();
+				}
+			}
+			else
+				GUILayout.Label(nodeData.nodeObject.name, Settings.NodeHeaderStyle);
+
+			if (Event.current.type == EventType.MouseDown)
+			{
+				var lastRect = GUILayoutUtility.GetLastRect();
+				if (lastRect.Contains(Event.current.mousePosition) && Event.current.clickCount > 1)
+				{
+					renaming = true;
+					Event.current.Use();
+				}
+				else
+					renaming = false;
+			}
+		}
+
 		void DrawCollapsedContents()
 		{
 			EditorGUILayout.BeginVertical();
 			GUILayout.FlexibleSpace();
-			GUILayout.Label(nodeData.nodeObject.name, Settings.NodeHeaderStyle);
+			DrawHeader();
 			GUILayout.FlexibleSpace();
 			EditorGUILayout.EndVertical();
 		}
@@ -168,8 +197,7 @@ namespace DataDesigner
 			EditorGUILayout.BeginVertical();
 			EditorGUIUtility.labelWidth = Settings.MinimumLabelWidth;
 			EditorGUIUtility.fieldWidth = Settings.MinimumFieldWidth;
-			GUILayout.Label(nodeData.nodeObject.name, Settings.NodeHeaderStyle);
-
+			DrawHeader();
 			GUILayout.Space(EditorGUIUtility.singleLineHeight - EditorGUIUtility.standardVerticalSpacing);
 
 			currentPropertyHeight += EditorGUIUtility.singleLineHeight + 3 * EditorGUIUtility.standardVerticalSpacing;
@@ -276,6 +304,11 @@ namespace DataDesigner
 			}
 
 			return next;
+		}
+
+		public void ResetFocus()
+		{
+			renaming = false;
 		}
 	}
 }
