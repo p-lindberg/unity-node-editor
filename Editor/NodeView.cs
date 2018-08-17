@@ -28,7 +28,10 @@ namespace DataDesigner
 		NodeGraphData.NodeData nodeData;
 		Vector2 size;
 		SerializedObject serializedObject;
-		Dictionary<string, NodeConnector> nodeConnectors = new Dictionary<string, NodeConnector>();
+
+		Dictionary<KeyPair<SerializedObject, string>, NodeConnector> nodeConnectors = new Dictionary<KeyPair<SerializedObject, string>, NodeConnector>();
+		Dictionary<object, SerializedObject> nestedObjects = new Dictionary<object, SerializedObject>();
+
 		System.Action postDraw;
 		bool renaming;
 
@@ -49,15 +52,15 @@ namespace DataDesigner
 			return new Rect(origin + nodeData.graphPosition, minSize);
 		}
 
-		NodeConnector GetNodeConnector(string propertyPath, Type propertyType)
+		NodeConnector GetNodeConnector(SerializedObject serializedObject, string propertyPath)
 		{
 			NodeConnector nodeConnector;
-			if (nodeConnectors.TryGetValue(propertyPath, out nodeConnector))
+			if (nodeConnectors.TryGetValue(KeyPair.From(serializedObject, propertyPath), out nodeConnector))
 				return nodeConnector;
 
 			nodeConnector = new NodeConnector(this, serializedObject, propertyPath);
-			nodeConnector.OnDeath += () => postDraw += () => nodeConnectors.Remove(nodeConnector.PropertyPath);
-			nodeConnectors[propertyPath] = nodeConnector;
+			nodeConnector.OnDeath += () => postDraw += () => nodeConnectors.Remove(KeyPair.From(serializedObject, propertyPath));
+			nodeConnectors[KeyPair.From(serializedObject, propertyPath)] = nodeConnector;
 			return nodeConnector;
 		}
 
@@ -208,7 +211,7 @@ namespace DataDesigner
 
 				var iterator = serializedObject.GetIterator();
 				if (iterator.NextVisible(true))
-					DrawPropertiesRecursive(iterator);
+					DrawPropertiesRecursive(iterator, 0);
 
 				EditorGUILayout.EndVertical();
 			}
@@ -219,14 +222,14 @@ namespace DataDesigner
 			currentPropertyHeight = 0f;
 		}
 
-		protected bool DrawPropertiesRecursive(SerializedProperty iterator)
+		protected bool DrawPropertiesRecursive(SerializedProperty iterator, int indentationDepth)
 		{
 			bool next = iterator.NextVisible(true);
 			var depth = next != false ? iterator.depth : 0;
 			while (next && iterator.depth >= depth)
 			{
 				if (Settings.IndentNested)
-					EditorGUI.indentLevel = iterator.depth;
+					EditorGUI.indentLevel = iterator.depth + indentationDepth;
 				
 				if (iterator.hasVisibleChildren)
 				{
@@ -241,7 +244,7 @@ namespace DataDesigner
 						currentPropertyHeight += EditorGUIUtility.standardVerticalSpacing;
 						EditorGUILayout.BeginVertical(Settings.SeparatorStyle);
 
-						var proceed = DrawPropertiesRecursive(iterator);
+						var proceed = DrawPropertiesRecursive(iterator, indentationDepth);
 
 						EditorGUILayout.EndVertical();
 
@@ -258,14 +261,10 @@ namespace DataDesigner
 				}
 				else
 				{
-					EditorGUILayout.PropertyField(iterator, false);
-
-					if (iterator.propertyType == SerializedPropertyType.ObjectReference)
-					{
-						var propertyType = NodeEditorUtilities.GetPropertyType(iterator);
-						if (propertyType.IsSubclassOf(typeof(ScriptableObject)))
-							GetNodeConnector(iterator.propertyPath, propertyType).SetDrawProperties(currentPropertyHeight, true);
-					}
+					if (iterator.isArray)
+						DrawArray(iterator, indentationDepth);
+					else
+						DrawField(iterator, indentationDepth);
 
 					currentPropertyHeight += EditorGUI.GetPropertyHeight(iterator) + EditorGUIUtility.standardVerticalSpacing;
 				}
@@ -274,6 +273,44 @@ namespace DataDesigner
 			}
 
 			return next;
+		}
+
+		void DrawField(SerializedProperty property, int indentationDepth)
+		{
+			if (property.propertyType == SerializedPropertyType.ObjectReference)
+			{
+				var propertyType = NodeEditorUtilities.GetPropertyType(property);
+				if (propertyType.GetCustomAttributes(typeof(EmbeddedAttribute), true).Any())
+				{
+					if (property.objectReferenceValue != null)
+					{
+						SerializedObject nestedSerializedObject;
+						if (!nestedObjects.TryGetValue(property.objectReferenceValue, out nestedSerializedObject))
+						{
+							nestedSerializedObject = new SerializedObject(property.objectReferenceValue);
+							nestedObjects[property.objectReferenceValue] = nestedSerializedObject;
+						}
+
+						var nestedIterator = nestedSerializedObject.GetIterator();
+						if (nestedIterator.NextVisible(true))
+							DrawPropertiesRecursive(nestedIterator, property.depth + indentationDepth);
+					}
+				}
+				else
+				{
+					if (propertyType.GetCustomAttributes(typeof(NodeAttribute), true).Any())
+						GetNodeConnector(property.serializedObject, property.propertyPath).SetDrawProperties(currentPropertyHeight, true);
+				
+					EditorGUILayout.PropertyField(property, false);
+				}
+			}
+			else
+				EditorGUILayout.PropertyField(property, false);
+		}
+
+		void DrawArray(SerializedProperty property, int indentationDepth)
+		{
+			EditorGUILayout.LabelField(property.displayName, EditorStyles.boldLabel);
 		}
 
 		protected bool FindConnectionsRecursive(SerializedProperty iterator)
@@ -292,8 +329,8 @@ namespace DataDesigner
 				else if (iterator.propertyType == SerializedPropertyType.ObjectReference)
 				{
 					var propertyType = NodeEditorUtilities.GetPropertyType(iterator);
-					if (propertyType.IsSubclassOf(typeof(ScriptableObject)))
-						GetNodeConnector(iterator.propertyPath, propertyType).Initialize();
+					if (propertyType.GetCustomAttributes(typeof(NodeAttribute), true).Any())
+						GetNodeConnector(serializedObject, iterator.propertyPath).Initialize();
 				}
 
 				next = iterator.NextVisible(true);
