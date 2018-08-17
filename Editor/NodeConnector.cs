@@ -26,14 +26,11 @@ namespace DataDesigner
 		bool visible;
 		float height;
 
-		public Type ConnectionType { get; private set; }
-
-		public NodeConnector(NodeView nodeView, SerializedObject serializedObject, string propertyPath, Type connectionType)
+		public NodeConnector(NodeView nodeView, SerializedObject serializedObject, string propertyPath)
 		{
 			this.NodeView = nodeView;
 			this.serializedObject = serializedObject;
 			this.PropertyPath = propertyPath;
-			this.ConnectionType = connectionType;
 			LeftGUIStyle = new GUIStyle(NodeEditor.Settings.DefaultNodeViewSettings.LeftConnectorStyle);
 			RightGUIStyle = new GUIStyle(NodeEditor.Settings.DefaultNodeViewSettings.RightConnectorStyle);
 		}
@@ -151,7 +148,7 @@ namespace DataDesigner
 				Event.current.Use();
 			}
 			else if (Connecting && ((Event.current.type == EventType.MouseUp && Event.current.button == 0)
-			        || (Event.current.type == EventType.MouseLeaveWindow)))
+			         || (Event.current.type == EventType.MouseLeaveWindow)))
 			{
 				var hit = NodeView.NodeEditor.GetNodeViewAtMousePosition(Event.current.mousePosition);
 				if (hit != null)
