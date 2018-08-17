@@ -22,15 +22,12 @@ namespace DataDesigner
 
 		public UnityEngine.Object NodeObject { get { return nodeData.nodeObject; } }
 
-		public IEnumerable<Type> ConnectionTypes { get { return connectionTypes; } }
-
 		float currentPropertyHeight;
 		bool dragging;
 		Vector2 origin;
 		NodeGraphData.NodeData nodeData;
 		Vector2 size;
 		SerializedObject serializedObject;
-		HashSet<Type> connectionTypes = new HashSet<Type>();
 		Dictionary<string, NodeConnector> nodeConnectors = new Dictionary<string, NodeConnector>();
 		System.Action postDraw;
 		bool renaming;
@@ -58,8 +55,7 @@ namespace DataDesigner
 			if (nodeConnectors.TryGetValue(propertyPath, out nodeConnector))
 				return nodeConnector;
 
-			nodeConnector = new NodeConnector(this, serializedObject, propertyPath, propertyType);
-			connectionTypes.Add(propertyType);
+			nodeConnector = new NodeConnector(this, serializedObject, propertyPath);
 			nodeConnector.OnDeath += () => postDraw += () => nodeConnectors.Remove(nodeConnector.PropertyPath);
 			nodeConnectors[propertyPath] = nodeConnector;
 			return nodeConnector;

@@ -304,12 +304,12 @@ namespace DataDesigner
 				{
 					var genericMenu = new GenericMenu();
 					var mousePosition = Event.current.mousePosition;
-					foreach (var connectableType in GetConnectableTypes())
+					foreach (var nodeType in GetNodeTypes())
 					{
-						genericMenu.AddItem(new GUIContent("Create/" + connectableType.Name), false, () =>
+						genericMenu.AddItem(new GUIContent("Create/" + nodeType.Name), false, () =>
 							{
 								var nodePosition = NodeEditorUtilities.RoundVectorToIntegerValues(ConvertScreenCoordsToZoomCoords(mousePosition));
-								GetNodeGraphData(CurrentTarget).CreateNode(connectableType, nodePosition, connectableType.Name);
+								GetNodeGraphData(CurrentTarget).CreateNode(nodeType, nodePosition, nodeType.Name);
 								SaveAllChanges(CurrentTarget);
 							});
 					}
@@ -337,15 +337,18 @@ namespace DataDesigner
 			}
 		}
 
-		IEnumerable<Type> GetConnectableTypes()
+		IEnumerable<Type> GetNodeTypes()
 		{
-			var connectableTypes = new HashSet<Type>();
-			connectableTypes.UnionWith(nodeViews.Values.SelectMany(x => x.ConnectionTypes));
-			connectableTypes.UnionWith(GetSerializedScriptableObjectFields().Select(x => x.FieldType));
-			var derivedTypes = new HashSet<Type>();
-			derivedTypes.UnionWith(connectableTypes.SelectMany(x => NodeEditorUtilities.GetDerivedTypes(x, false, false)));
-			connectableTypes.UnionWith(derivedTypes);
-			return connectableTypes;
+			return AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes()).Where(
+				(type) =>
+				{
+					var nodeAttribute = type.GetCustomAttributes(typeof(NodeAttribute), true).FirstOrDefault() as NodeAttribute;
+					if (nodeAttribute != null)
+						return nodeAttribute.Graphs.Contains(CurrentTarget.GetType());
+
+					return false;
+				}
+			);
 		}
 
 		public NodeGraphData.NodeData GetNodeViewAtMousePosition(Vector3 screenPosition)
