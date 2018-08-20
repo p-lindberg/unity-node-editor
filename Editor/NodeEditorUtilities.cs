@@ -15,22 +15,27 @@ namespace DataDesigner
 
 		public static Type GetPropertyType(SerializedProperty property)
 		{
-			var typeName = GetPropertyTypeName(property);
+			var typeName = GetPropertyTypeName(property.type);
 			return GetTypeByName(typeName);
 		}
 
-		public static string GetPropertyTypeName(SerializedProperty property)
+		public static Type GetPropertyElementType(SerializedProperty property)
 		{
-			var type = property.type;
-			var match = Regex.Match(type, @"PPtr<\$(.*?)>");
+			var typeName = GetPropertyTypeName(property.arrayElementType);
+			return GetTypeByName(typeName);
+		}
+
+		static string GetPropertyTypeName(string propertyType)
+		{
+			var match = Regex.Match(propertyType, @"PPtr<\$(.*?)>");
 			if (match.Success)
-				type = match.Groups[1].Value;
-			return type;
+				propertyType = match.Groups[1].Value;
+			return propertyType;
 		}
 
 		static Dictionary<string, Type> typeCache = new Dictionary<string, Type>();
 
-		public static Type GetTypeByName(string typeName)
+		static Type GetTypeByName(string typeName)
 		{
 			Type cachedType;
 			if (typeCache.TryGetValue(typeName, out cachedType))

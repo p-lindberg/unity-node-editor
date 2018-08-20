@@ -202,6 +202,8 @@ namespace DataDesigner
 			currentPropertyHeight += EditorGUIUtility.singleLineHeight + 3 * EditorGUIUtility.standardVerticalSpacing;
 
 			serializedObject.Update();
+			foreach (var nestedObject in nestedObjects)
+				nestedObject.Value.Update();
 
 			currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
 
@@ -215,8 +217,11 @@ namespace DataDesigner
 
 				EditorGUILayout.EndVertical();
 			}
-
+				
 			serializedObject.ApplyModifiedProperties();
+			foreach (var nestedObject in nestedObjects)
+				nestedObject.Value.ApplyModifiedProperties();
+			
 			EditorGUILayout.EndVertical();
 
 			currentPropertyHeight = 0f;
@@ -224,93 +229,220 @@ namespace DataDesigner
 
 		protected bool DrawPropertiesRecursive(SerializedProperty iterator, int indentationDepth)
 		{
-			bool next = iterator.NextVisible(true);
-			var depth = next != false ? iterator.depth : 0;
-			while (next && iterator.depth >= depth)
+			bool doContinue = iterator.NextVisible(true);
+			var propertyDepth = doContinue != false ? iterator.depth : 0;
+			while (doContinue && iterator.depth >= propertyDepth)
 			{
 				if (Settings.IndentNested)
 					EditorGUI.indentLevel = iterator.depth + indentationDepth;
 				
-				if (iterator.hasVisibleChildren)
-				{
-					iterator.isExpanded = EditorGUILayout.Foldout(iterator.isExpanded, iterator.displayName, true);
-					currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
-
-					if (Settings.IndentHeadersOnly)
-						EditorGUI.indentLevel = 0;
-
-					if (iterator.isExpanded)
-					{
-						currentPropertyHeight += EditorGUIUtility.standardVerticalSpacing;
-						EditorGUILayout.BeginVertical(Settings.SeparatorStyle);
-
-						var proceed = DrawPropertiesRecursive(iterator, indentationDepth);
-
-						EditorGUILayout.EndVertical();
-
-						if (proceed)
-						{
-							if (depth == iterator.depth)
-								currentPropertyHeight += EditorGUIUtility.standardVerticalSpacing;
-
-							continue;
-						}
-						else
-							return false;
-					}
-				}
-				else
-				{
-					if (iterator.isArray)
-						DrawArray(iterator, indentationDepth);
-					else
-						DrawField(iterator, indentationDepth);
-
-					currentPropertyHeight += EditorGUI.GetPropertyHeight(iterator) + EditorGUIUtility.standardVerticalSpacing;
-				}
-
-				next = iterator.NextVisible(iterator.isExpanded);
+				doContinue = DrawProperty(iterator, propertyDepth, indentationDepth);
 			}
 
-			return next;
+			return doContinue;
 		}
 
-		void DrawField(SerializedProperty property, int indentationDepth)
+		bool DrawProperty(SerializedProperty iterator, int propertyDepth, int indentationDepth, bool showDisplayName = true)
+		{
+			if (iterator.isArray)
+				return DrawArray(iterator, propertyDepth, indentationDepth, showDisplayName);
+			else if (iterator.hasVisibleChildren)
+				return DrawNestedClass(iterator, propertyDepth, indentationDepth, showDisplayName);
+			else
+			{
+				DrawField(iterator, indentationDepth, showDisplayName);
+				return iterator.NextVisible(iterator.isExpanded);
+			}
+		}
+
+		bool DrawNestedClass(SerializedProperty property, int propertyDepth, int indentationDepth, bool showDisplayName = true)
+		{
+			property.isExpanded = EditorGUILayout.Foldout(property.isExpanded, property.displayName, true);
+			currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
+
+			if (Settings.IndentHeadersOnly)
+				EditorGUI.indentLevel = 0;
+
+			if (property.isExpanded)
+			{
+				currentPropertyHeight += EditorGUIUtility.standardVerticalSpacing;
+				EditorGUILayout.BeginVertical(Settings.SeparatorStyle);
+
+				var proceed = DrawPropertiesRecursive(property, indentationDepth);
+
+				EditorGUILayout.EndVertical();
+
+				if (proceed)
+				{
+					if (propertyDepth == property.depth)
+						currentPropertyHeight += EditorGUIUtility.standardVerticalSpacing;
+
+					return true;
+				}
+				else
+					return false;
+			}
+
+			return true;
+		}
+
+		void DrawField(SerializedProperty property, int indentationDepth, bool showDisplayName = true)
 		{
 			if (property.propertyType == SerializedPropertyType.ObjectReference)
-			{
-				var propertyType = NodeEditorUtilities.GetPropertyType(property);
-				if (propertyType.GetCustomAttributes(typeof(EmbeddedAttribute), true).Any())
-				{
-					if (property.objectReferenceValue != null)
-					{
-						SerializedObject nestedSerializedObject;
-						if (!nestedObjects.TryGetValue(property.objectReferenceValue, out nestedSerializedObject))
-						{
-							nestedSerializedObject = new SerializedObject(property.objectReferenceValue);
-							nestedObjects[property.objectReferenceValue] = nestedSerializedObject;
-						}
+				DrawObjectField(property, indentationDepth, showDisplayName);
+			else
+				DrawPropertyField(property, showDisplayName);
+		}
 
-						var nestedIterator = nestedSerializedObject.GetIterator();
-						if (nestedIterator.NextVisible(true))
-							DrawPropertiesRecursive(nestedIterator, property.depth + indentationDepth);
+		void DrawObjectField(SerializedProperty property, int indentationDepth, bool showDisplayName = true)
+		{
+			var propertyType = NodeEditorUtilities.GetPropertyType(property);
+			if (propertyType.GetCustomAttributes(typeof(EmbeddedAttribute), true).Any())
+			{
+				if (property.objectReferenceValue != null)
+				{
+					SerializedObject nestedSerializedObject;
+					if (!nestedObjects.TryGetValue(property.objectReferenceValue, out nestedSerializedObject))
+					{
+						nestedSerializedObject = new SerializedObject(property.objectReferenceValue);
+						nestedObjects[property.objectReferenceValue] = nestedSerializedObject;
 					}
+
+					var nestedIterator = nestedSerializedObject.GetIterator();
+						
+					EditorGUILayout.BeginHorizontal();
+					nestedIterator.isExpanded = EditorGUILayout.Foldout(nestedIterator.isExpanded, property.objectReferenceValue.GetType().Name, Settings.Foldouts);
+
+					currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
+
+					if (GUILayout.Button("-", GUILayout.Width(15), GUILayout.Height(12)))
+					{
+						var instance = property.objectReferenceValue;
+						property.objectReferenceValue = null;
+						property.serializedObject.ApplyModifiedProperties();
+						nestedObjects.Remove(instance);
+						NodeEditor.DestroyEmbeddedObject(instance);
+					}
+					EditorGUILayout.EndHorizontal();
+
+					if (nestedIterator.isExpanded && nestedIterator.NextVisible(true))
+						DrawPropertiesRecursive(nestedIterator, indentationDepth);
 				}
 				else
 				{
-					if (propertyType.GetCustomAttributes(typeof(NodeAttribute), true).Any())
-						GetNodeConnector(property.serializedObject, property.propertyPath).SetDrawProperties(currentPropertyHeight, true);
-				
-					EditorGUILayout.PropertyField(property, false);
+					if (GUILayout.Button("+", GUILayout.Width(15), GUILayout.Height(12)))
+						DrawObjectCreationMenu(property.Copy());
 				}
 			}
 			else
-				EditorGUILayout.PropertyField(property, false);
+			{
+				if (propertyType.GetCustomAttributes(typeof(NodeAttribute), true).Any())
+					GetNodeConnector(property.serializedObject, property.propertyPath).SetDrawProperties(currentPropertyHeight, true);
+
+				DrawPropertyField(property, showDisplayName);
+			}
 		}
 
-		void DrawArray(SerializedProperty property, int indentationDepth)
+		void DrawObjectCreationMenu(SerializedProperty property)
 		{
+			var genericMenu = new GenericMenu();
+			var elementType = NodeEditorUtilities.GetPropertyType(property);
+			var derivedTypes = NodeEditorUtilities.GetDerivedTypes(elementType, true, false);
+			foreach (var derivedType in derivedTypes)
+			{
+				genericMenu.AddItem(new GUIContent("Create/" + derivedType.Name), false, () =>
+					{
+						var embeddedObject = NodeEditor.CreateEmbeddedObject(derivedType);
+						property.objectReferenceValue = embeddedObject;
+						property.serializedObject.ApplyModifiedProperties();
+					});
+			}
+
+			genericMenu.ShowAsContext();
+		}
+
+		void DrawPropertyField(SerializedProperty property, bool showDisplayName = true)
+		{
+			if (showDisplayName)
+				EditorGUILayout.PropertyField(property);
+			else
+				EditorGUILayout.PropertyField(property, GUIContent.none);
+			
+			currentPropertyHeight += EditorGUI.GetPropertyHeight(property) + EditorGUIUtility.standardVerticalSpacing;
+		}
+
+		bool DrawArray(SerializedProperty property, int basePropertyDepth, int indentationDepth, bool showDisplayName = true)
+		{
+			DrawArrayHeader(property);
+
+			var arrayProperty = property.Copy();
+			var arrayPropertyDepth = property.depth;
+			var doContinue = property.NextVisible(true);
+			int index = 0;
+			while (doContinue && property.depth > arrayPropertyDepth)
+			{
+				if (property.propertyType == SerializedPropertyType.ArraySize)
+				{
+					doContinue = property.NextVisible(true);
+					continue;
+				}
+
+				EditorGUILayout.BeginHorizontal();
+
+				if (GUILayout.Button(new GUIContent(">"), GUILayout.Width(15), GUILayout.Height(12)))
+					DrawArrayControls(arrayProperty, index);
+				
+				EditorGUILayout.BeginVertical();
+				doContinue = DrawProperty(property, basePropertyDepth, indentationDepth, showDisplayName: false);
+				EditorGUILayout.EndVertical();
+				EditorGUILayout.EndHorizontal();
+				
+				index++;
+			}
+
+			return doContinue;
+		}
+
+		void DrawArrayHeader(SerializedProperty property)
+		{
+			EditorGUILayout.BeginHorizontal();
 			EditorGUILayout.LabelField(property.displayName, EditorStyles.boldLabel);
+
+			if (property.arraySize > 0 && GUILayout.Button("-", GUILayout.Width(15), GUILayout.Height(12)))
+				property.DeleteArrayElementAtIndex(property.arraySize - 1);
+			
+			if (GUILayout.Button("+", GUILayout.Width(15), GUILayout.Height(12)))
+				property.InsertArrayElementAtIndex(property.arraySize);
+
+			EditorGUILayout.EndHorizontal();
+			
+			currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
+		}
+
+		void DrawArrayControls(SerializedProperty arrayProperty, int index)
+		{
+			var genericMenu = new GenericMenu();
+			genericMenu.AddItem(new GUIContent("Delete"), false, () =>
+				{
+					arrayProperty.DeleteArrayElementAtIndex(index);
+					arrayProperty.serializedObject.ApplyModifiedProperties();
+				});
+
+			if (index > 0)
+				genericMenu.AddItem(new GUIContent("Move Up"), false, () =>
+					{
+						arrayProperty.MoveArrayElement(index, index - 1);
+						arrayProperty.serializedObject.ApplyModifiedProperties();
+					});
+
+			if (index < arrayProperty.arraySize - 1)
+				genericMenu.AddItem(new GUIContent("Move Down"), false, () =>
+					{
+						arrayProperty.MoveArrayElement(index, index + 1);
+						arrayProperty.serializedObject.ApplyModifiedProperties();
+					});
+					
+			genericMenu.ShowAsContext();
 		}
 
 		protected bool FindConnectionsRecursive(SerializedProperty iterator)

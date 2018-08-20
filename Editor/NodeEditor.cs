@@ -372,5 +372,19 @@ namespace DataDesigner
 			var view = nodeViews.FirstOrDefault(x => x.Key.nodeObject == nodeObject).Value;
 			return view != null ? view.GetWindowRect() : default(Rect);
 		}
+
+		public UnityEngine.Object CreateEmbeddedObject(Type type)
+		{
+			var instance = ScriptableObject.CreateInstance(type);
+			AssetDatabase.AddObjectToAsset(instance, CurrentTarget);
+			SaveAllChanges(CurrentTarget);
+			return instance;
+		}
+
+		public void DestroyEmbeddedObject(UnityEngine.Object embeddedObject)
+		{
+			Undo.DestroyObjectImmediate(embeddedObject);
+			SaveAllChanges(CurrentTarget);
+		}
 	}
 }

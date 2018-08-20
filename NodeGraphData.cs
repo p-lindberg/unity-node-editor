@@ -19,6 +19,7 @@ namespace DataDesigner
 			public UnityEngine.Object nodeObject;
 			public Vector2 graphPosition;
 			public bool isExpanded;
+			public UnityEngine.Object nestedObjects;
 
 			public override bool Equals(object obj)
 			{
