@@ -56,4 +56,8 @@ public class NodeViewSettings : ScriptableObject
 	[SerializeField] GUIStyle tagStyle;
 
 	public GUIStyle TagStyle { get { return tagStyle; } }
+
+	[SerializeField] GUIStyle foldouts;
+
+	public GUIStyle Foldouts { get { return foldouts; } set { foldouts = value; } }
 }
