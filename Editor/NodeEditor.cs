@@ -87,6 +87,10 @@ namespace DataDesigner
 		protected override void DrawUtilityBarContents()
 		{
 			base.DrawUtilityBarContents();
+
+			if (GUILayout.Button("Clean", EditorStyles.toolbarButton))
+				RemoveUnreachableObjects();
+
 			GUILayout.FlexibleSpace();
 			GUILayout.Label(CurrentTarget != null ? CurrentTarget.name : "No graph selected", Settings.GraphHeaderStyle);
 		}
@@ -212,8 +216,11 @@ namespace DataDesigner
 			SaveAllChanges(CurrentTarget);
 		}
 
-		static void SaveAllChanges(UnityEngine.Object graph)
+		public void SaveAllChanges(UnityEngine.Object graph = null)
 		{
+			if (graph == null)
+				graph = CurrentTarget;
+			
 			foreach (var subAsset in AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(graph)))
 				EditorUtility.SetDirty(subAsset);
 			
@@ -376,6 +383,7 @@ namespace DataDesigner
 		public UnityEngine.Object CreateEmbeddedObject(Type type)
 		{
 			var instance = ScriptableObject.CreateInstance(type);
+			instance.name = ObjectNames.NicifyVariableName(type.Name);
 			AssetDatabase.AddObjectToAsset(instance, CurrentTarget);
 			SaveAllChanges(CurrentTarget);
 			return instance;
@@ -385,6 +393,45 @@ namespace DataDesigner
 		{
 			Undo.DestroyObjectImmediate(embeddedObject);
 			SaveAllChanges(CurrentTarget);
+		}
+
+		public void RemoveUnreachableObjects()
+		{
+			HashSet<UnityEngine.Object> reachableObjects = new HashSet<UnityEngine.Object>();
+			var nodeGraphData = GetNodeGraphData(CurrentTarget);
+
+			foreach (var node in nodeGraphData.Nodes.Select(x => x.nodeObject))
+			{
+				FindReachableObjects(node, reachableObjects);
+				reachableObjects.Add(node);
+			}
+			
+			reachableObjects.Add(nodeGraphData);
+			reachableObjects.Add(CurrentTarget);
+
+			var savedAssets = AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(CurrentTarget));
+			foreach (var asset in savedAssets)
+			{
+				if (!reachableObjects.Contains(asset))
+					Undo.DestroyObjectImmediate(asset);
+			}
+
+			SaveAllChanges(CurrentTarget);
+			Reset();
+		}
+
+		void FindReachableObjects(UnityEngine.Object parent, HashSet<UnityEngine.Object> reachableObjects)
+		{
+			var serializedObject = new SerializedObject(parent);
+			var iterator = serializedObject.GetIterator();
+			do
+			{
+				if (iterator.propertyType == SerializedPropertyType.ObjectReference && iterator.objectReferenceValue != null)
+				{
+					if (reachableObjects.Add(iterator.objectReferenceValue))
+						FindReachableObjects(iterator.objectReferenceValue, reachableObjects);
+				}
+			} while(iterator.Next(true));
 		}
 	}
 }

@@ -5,6 +5,41 @@ using UnityEditor;
 using System.Linq;
 using System;
 
+public class TextInputPopup : PopupWindowContent
+{
+	Action<string> onTextChanged;
+	Action onComplete;
+	string text;
+
+	public TextInputPopup(string text, Action<string> onTextChanged, Action onComplete)
+	{
+		this.text = text;
+		this.onTextChanged = onTextChanged;
+		this.onComplete = onComplete;
+	}
+
+	public override Vector2 GetWindowSize()
+	{
+		return new Vector2(200, EditorGUIUtility.singleLineHeight);
+	}
+
+	public override void OnGUI(Rect rect)
+	{
+		text = GUILayout.TextField(text);
+		onTextChanged.Invoke(text);
+	}
+
+	public override void OnOpen()
+	{
+		
+	}
+
+	public override void OnClose()
+	{
+		onComplete.Invoke();
+	}
+}
+
 // TODO: Highlight selected, highlight when mousing over a connectable node while connecting
 namespace DataDesigner
 {
@@ -28,6 +63,7 @@ namespace DataDesigner
 		NodeGraphData.NodeData nodeData;
 		Vector2 size;
 		SerializedObject serializedObject;
+		SerializedProperty propertyIterator;
 
 		Dictionary<KeyPair<SerializedObject, string>, NodeConnector> nodeConnectors = new Dictionary<KeyPair<SerializedObject, string>, NodeConnector>();
 		Dictionary<object, SerializedObject> nestedObjects = new Dictionary<object, SerializedObject>();
@@ -203,7 +239,7 @@ namespace DataDesigner
 
 			serializedObject.Update();
 			foreach (var nestedObject in nestedObjects)
-				nestedObject.Value.Update();
+				nestedObject.Value.Update();			
 
 			currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
 
@@ -211,9 +247,13 @@ namespace DataDesigner
 			{
 				EditorGUILayout.BeginVertical(Settings.SeparatorStyle);
 
-				var iterator = serializedObject.GetIterator();
-				if (iterator.NextVisible(true))
-					DrawPropertiesRecursive(iterator, 0);
+				if (propertyIterator == null)
+					propertyIterator = serializedObject.GetIterator();
+				else
+					propertyIterator.Reset();
+				
+				if (propertyIterator.NextVisible(true))
+					DrawPropertiesRecursive(propertyIterator, 0);
 
 				EditorGUILayout.EndVertical();
 			}
@@ -244,7 +284,7 @@ namespace DataDesigner
 
 		bool DrawProperty(SerializedProperty iterator, int propertyDepth, int indentationDepth, bool showDisplayName = true)
 		{
-			if (iterator.isArray)
+			if (iterator.isArray && iterator.type != "string")
 				return DrawArray(iterator, propertyDepth, indentationDepth, showDisplayName);
 			else if (iterator.hasVisibleChildren)
 				return DrawNestedClass(iterator, propertyDepth, indentationDepth, showDisplayName);
@@ -283,7 +323,7 @@ namespace DataDesigner
 					return false;
 			}
 
-			return true;
+			return property.NextVisible(true);
 		}
 
 		void DrawField(SerializedProperty property, int indentationDepth, bool showDisplayName = true)
@@ -294,6 +334,18 @@ namespace DataDesigner
 				DrawPropertyField(property, showDisplayName);
 		}
 
+		SerializedProperty GetNestedPropertyIterator(SerializedProperty property)
+		{
+			SerializedObject nestedSerializedObject;
+			if (!nestedObjects.TryGetValue(property.objectReferenceValue, out nestedSerializedObject))
+			{
+				nestedSerializedObject = new SerializedObject(property.objectReferenceValue);
+				nestedObjects[property.objectReferenceValue] = nestedSerializedObject;
+			}
+
+			return nestedSerializedObject.GetIterator();
+		}
+
 		void DrawObjectField(SerializedProperty property, int indentationDepth, bool showDisplayName = true)
 		{
 			var propertyType = NodeEditorUtilities.GetPropertyType(property);
@@ -301,17 +353,21 @@ namespace DataDesigner
 			{
 				if (property.objectReferenceValue != null)
 				{
-					SerializedObject nestedSerializedObject;
-					if (!nestedObjects.TryGetValue(property.objectReferenceValue, out nestedSerializedObject))
-					{
-						nestedSerializedObject = new SerializedObject(property.objectReferenceValue);
-						nestedObjects[property.objectReferenceValue] = nestedSerializedObject;
-					}
-
-					var nestedIterator = nestedSerializedObject.GetIterator();
+					var nestedIterator = GetNestedPropertyIterator(property);
 						
 					EditorGUILayout.BeginHorizontal();
-					nestedIterator.isExpanded = EditorGUILayout.Foldout(nestedIterator.isExpanded, property.objectReferenceValue.GetType().Name, Settings.Foldouts);
+					nestedIterator.isExpanded = EditorGUILayout.Foldout(nestedIterator.isExpanded, property.objectReferenceValue.name, Settings.Foldouts);
+
+					if (Event.current.type == EventType.MouseDown && Event.current.button == 1)
+					{
+						var lastRect = GUILayoutUtility.GetLastRect();
+						if (lastRect.Contains(Event.current.mousePosition))
+						{
+							var target = property.objectReferenceValue;
+							PopupWindow.Show(lastRect, new TextInputPopup(target.name, (text) => target.name = text, () => NodeEditor.SaveAllChanges()));
+							Event.current.Use();
+						}
+					}
 
 					currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
 
@@ -330,8 +386,14 @@ namespace DataDesigner
 				}
 				else
 				{
+					EditorGUILayout.BeginHorizontal();
 					if (GUILayout.Button("+", GUILayout.Width(15), GUILayout.Height(12)))
 						DrawObjectCreationMenu(property.Copy());
+
+					EditorGUILayout.LabelField("Empty");
+					EditorGUILayout.EndHorizontal();
+
+					currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
 				}
 			}
 			else
@@ -350,7 +412,7 @@ namespace DataDesigner
 			var derivedTypes = NodeEditorUtilities.GetDerivedTypes(elementType, true, false);
 			foreach (var derivedType in derivedTypes)
 			{
-				genericMenu.AddItem(new GUIContent("Create/" + derivedType.Name), false, () =>
+				genericMenu.AddItem(new GUIContent("Create/" + ObjectNames.NicifyVariableName(derivedType.Name)), false, () =>
 					{
 						var embeddedObject = NodeEditor.CreateEmbeddedObject(derivedType);
 						property.objectReferenceValue = embeddedObject;
@@ -412,7 +474,12 @@ namespace DataDesigner
 				property.DeleteArrayElementAtIndex(property.arraySize - 1);
 			
 			if (GUILayout.Button("+", GUILayout.Width(15), GUILayout.Height(12)))
+			{
 				property.InsertArrayElementAtIndex(property.arraySize);
+				var insertedElement = property.GetArrayElementAtIndex(property.arraySize - 1);
+				if (insertedElement.propertyType == SerializedPropertyType.ObjectReference && insertedElement.objectReferenceValue != null)
+					property.DeleteArrayElementAtIndex(property.arraySize - 1);
+			}
 
 			EditorGUILayout.EndHorizontal();
 			
@@ -461,8 +528,16 @@ namespace DataDesigner
 				else if (iterator.propertyType == SerializedPropertyType.ObjectReference)
 				{
 					var propertyType = NodeEditorUtilities.GetPropertyType(iterator);
-					if (propertyType.GetCustomAttributes(typeof(NodeAttribute), true).Any())
-						GetNodeConnector(serializedObject, iterator.propertyPath).Initialize();
+					if (propertyType != null)
+					{
+						if (propertyType.GetCustomAttributes(typeof(EmbeddedAttribute), true).Any() && iterator.objectReferenceValue != null)
+						{
+							var nestedIterator = GetNestedPropertyIterator(iterator);
+							FindConnectionsRecursive(nestedIterator);
+						}
+						else if (propertyType.GetCustomAttributes(typeof(NodeAttribute), true).Any())
+							GetNodeConnector(iterator.serializedObject, iterator.propertyPath).Initialize();
+					}
 				}
 
 				next = iterator.NextVisible(true);
