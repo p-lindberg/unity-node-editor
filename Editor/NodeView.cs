@@ -412,7 +412,8 @@ namespace DataDesigner
 			var derivedTypes = NodeEditorUtilities.GetDerivedTypes(elementType, true, false);
 			foreach (var derivedType in derivedTypes)
 			{
-				genericMenu.AddItem(new GUIContent("Create/" + ObjectNames.NicifyVariableName(derivedType.Name)), false, () =>
+				var menuPathAttribute = derivedType.GetCustomAttributes(typeof(MenuPathAttribute), true).FirstOrDefault() as MenuPathAttribute;
+				genericMenu.AddItem(new GUIContent(menuPathAttribute != null ? menuPathAttribute.path : ObjectNames.NicifyVariableName(derivedType.Name)), false, () =>
 					{
 						var embeddedObject = NodeEditor.CreateEmbeddedObject(derivedType);
 						property.objectReferenceValue = embeddedObject;
@@ -435,7 +436,7 @@ namespace DataDesigner
 
 		bool DrawArray(SerializedProperty property, int basePropertyDepth, int indentationDepth, bool showDisplayName = true)
 		{
-			DrawArrayHeader(property);
+			property.isExpanded = DrawArrayHeader(property.isExpanded, property);
 
 			var arrayProperty = property.Copy();
 			var arrayPropertyDepth = property.depth;
@@ -449,15 +450,20 @@ namespace DataDesigner
 					continue;
 				}
 
-				EditorGUILayout.BeginHorizontal();
+				if (arrayProperty.isExpanded)
+				{
+					EditorGUILayout.BeginHorizontal();
 
-				if (GUILayout.Button(new GUIContent(">"), GUILayout.Width(15), GUILayout.Height(12)))
-					DrawArrayControls(arrayProperty, index);
+					if (GUILayout.Button(new GUIContent(">"), GUILayout.Width(15), GUILayout.Height(12)))
+						DrawArrayControls(arrayProperty, index);
 				
-				EditorGUILayout.BeginVertical();
-				doContinue = DrawProperty(property, basePropertyDepth, indentationDepth, showDisplayName: false);
-				EditorGUILayout.EndVertical();
-				EditorGUILayout.EndHorizontal();
+					EditorGUILayout.BeginVertical();
+					doContinue = DrawProperty(property, basePropertyDepth, indentationDepth, showDisplayName: false);
+					EditorGUILayout.EndVertical();
+					EditorGUILayout.EndHorizontal();
+				}
+				else
+					doContinue = property.NextVisible(false);
 				
 				index++;
 			}
@@ -465,13 +471,16 @@ namespace DataDesigner
 			return doContinue;
 		}
 
-		void DrawArrayHeader(SerializedProperty property)
+		bool DrawArrayHeader(bool isExpanded, SerializedProperty property)
 		{
 			EditorGUILayout.BeginHorizontal();
-			EditorGUILayout.LabelField(property.displayName, EditorStyles.boldLabel);
+			isExpanded = EditorGUILayout.Foldout(isExpanded, property.displayName, Settings.Foldouts);
 
 			if (property.arraySize > 0 && GUILayout.Button("-", GUILayout.Width(15), GUILayout.Height(12)))
+			{
 				property.DeleteArrayElementAtIndex(property.arraySize - 1);
+				isExpanded = true;
+			}
 			
 			if (GUILayout.Button("+", GUILayout.Width(15), GUILayout.Height(12)))
 			{
@@ -479,11 +488,14 @@ namespace DataDesigner
 				var insertedElement = property.GetArrayElementAtIndex(property.arraySize - 1);
 				if (insertedElement.propertyType == SerializedPropertyType.ObjectReference && insertedElement.objectReferenceValue != null)
 					property.DeleteArrayElementAtIndex(property.arraySize - 1);
+
+				isExpanded = true;
 			}
 
 			EditorGUILayout.EndHorizontal();
 			
 			currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
+			return isExpanded;
 		}
 
 		void DrawArrayControls(SerializedProperty arrayProperty, int index)

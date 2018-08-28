@@ -21,7 +21,24 @@ namespace DataDesigner
 			set
 			{
 				currentTarget = value;
+				currentTargetSerializedObject = null;
 				EditorUtility.SetDirty(this);
+			}
+		}
+
+		SerializedObject currentTargetSerializedObject;
+
+		SerializedObject CurrentTargetSerializedObject
+		{
+			get
+			{
+				if (CurrentTarget == null)
+					return null;
+				
+				if (currentTargetSerializedObject == null)
+					currentTargetSerializedObject = new SerializedObject(CurrentTarget);
+
+				return currentTargetSerializedObject;
 			}
 		}
 
@@ -181,14 +198,45 @@ namespace DataDesigner
 					});*/
 			}
 
-			foreach (var scriptableObject in GetSerializedScriptableObjectFields())
+			foreach (var property in NodeEditorUtilities.GetExposedObjectFields(CurrentTargetSerializedObject, false, nodeData.nodeObject.GetType(), true))
 			{
-				if (scriptableObject.FieldType.IsAssignableFrom(nodeData.nodeObject.GetType()))
-					genericMenu.AddItem(new GUIContent("Set as/" + scriptableObject.Name), false, () =>
+				var propertyCopy = property.Copy();
+				genericMenu.AddItem(new GUIContent("Set as/" + propertyCopy.displayName), false, () =>
+					{
+						propertyCopy.objectReferenceValue = nodeData.nodeObject;
+						propertyCopy.serializedObject.ApplyModifiedProperties();
+					});
+			}
+
+			foreach (var property in NodeEditorUtilities.GetExposedObjectArrays(CurrentTargetSerializedObject, false, nodeData.nodeObject.GetType(), true))
+			{
+				var propertyCopy = property.Copy();
+				int foundIndex = -1;
+				for (int i = 0; i < propertyCopy.arraySize; i++)
+				{
+					if (propertyCopy.GetArrayElementAtIndex(i).objectReferenceValue == nodeData.nodeObject)
+					{
+						foundIndex = i;
+						break;
+					}
+				}
+
+				if (foundIndex == -1)
+					genericMenu.AddItem(new GUIContent("Set as/" + propertyCopy.displayName), false, () =>
 						{
-							Undo.RecordObject(CurrentTarget, "Changed exposed node");
-							scriptableObject.SetValue(CurrentTarget, nodeData.nodeObject);
-							SaveAllChanges(CurrentTarget);
+							propertyCopy.serializedObject.Update();
+							propertyCopy.InsertArrayElementAtIndex(propertyCopy.arraySize - 1);
+							var insertedProperty = propertyCopy.GetArrayElementAtIndex(propertyCopy.arraySize - 1);
+							insertedProperty.objectReferenceValue = nodeData.nodeObject;
+							propertyCopy.serializedObject.ApplyModifiedProperties();
+						});
+				else
+					genericMenu.AddItem(new GUIContent("Unset as/" + propertyCopy.displayName), false, () =>
+						{
+							propertyCopy.serializedObject.Update();
+							propertyCopy.DeleteArrayElementAtIndex(foundIndex);
+							propertyCopy.DeleteArrayElementAtIndex(foundIndex);
+							propertyCopy.serializedObject.ApplyModifiedProperties();
 						});
 			}
 		}
@@ -198,6 +246,21 @@ namespace DataDesigner
 			var nodeGraphData = GetNodeGraphData(nodeData.nodeObject, createIfMissing: false);
 
 			RecordGraphUndoState(CurrentTarget, "Deleted node");
+
+			// Remove the node from any exposed lists on the graph.
+			foreach (var property in NodeEditorUtilities.GetExposedObjectArrays(CurrentTargetSerializedObject, false, nodeData.nodeObject.GetType(), true))
+			{
+				for (int i = property.arraySize - 1; i >= 0; i--)
+				{
+					if (property.GetArrayElementAtIndex(i).objectReferenceValue == nodeData.nodeObject)
+					{
+						property.DeleteArrayElementAtIndex(i);
+						property.DeleteArrayElementAtIndex(i);
+						property.serializedObject.ApplyModifiedProperties();
+					}
+				}
+			}
+
 			GetNodeGraphData(CurrentTarget).RemoveNode(nodeData.nodeObject);
 			nodeViews.Remove(nodeData);
 			Undo.DestroyObjectImmediate(nodeData.nodeObject);
@@ -230,13 +293,6 @@ namespace DataDesigner
 		static void RecordGraphUndoState(UnityEngine.Object graph, string undoMessage)
 		{
 			Undo.RecordObjects(AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(graph)), undoMessage);
-		}
-
-		IEnumerable<FieldInfo> GetSerializedScriptableObjectFields()
-		{
-			foreach (var field in CurrentTarget.GetType().GetFields(NodeEditorUtilities.StandardBindingFlags).Where(x => x.FieldType.IsSubclassOf(typeof(ScriptableObject))))
-				if (field.IsPublic || field.GetCustomAttributes(typeof(SerializeField), true).Count() > 0)
-					yield return field;
 		}
 
 		NodeGraphData GetNodeGraphData(UnityEngine.Object graph, bool createIfMissing = true)
@@ -284,10 +340,23 @@ namespace DataDesigner
 			{
 				var nodeView = GetNodeView(nodeData);
 				nodeView.Draw(origin);
+			}
 
-				foreach (var field in GetSerializedScriptableObjectFields())
-					if (field.GetValue(CurrentTarget) as UnityEngine.Object == nodeData.nodeObject)
-						nodeView.DrawTag(field.Name);
+			foreach (var property in NodeEditorUtilities.GetExposedObjectFields(CurrentTargetSerializedObject))
+			{
+				var nodeView = GetNodeView(property.objectReferenceValue);
+				if (nodeView != null)
+					nodeView.DrawTag(property.displayName);
+			}
+
+			foreach (var property in NodeEditorUtilities.GetExposedObjectArrays(CurrentTargetSerializedObject))
+			{
+				for (int i = 0; i < property.arraySize; i++)
+				{
+					var nodeView = GetNodeView(property.GetArrayElementAtIndex(i).objectReferenceValue);
+					if (nodeView != null)
+						nodeView.DrawTag(property.displayName);
+				}
 			}
 
 			EndWindows();
@@ -313,7 +382,8 @@ namespace DataDesigner
 					var mousePosition = Event.current.mousePosition;
 					foreach (var nodeType in GetNodeTypes())
 					{
-						genericMenu.AddItem(new GUIContent("Create/" + nodeType.Name), false, () =>
+						var menuPathAttribute = nodeType.GetCustomAttributes(typeof(MenuPathAttribute), true).FirstOrDefault() as MenuPathAttribute;
+						genericMenu.AddItem(new GUIContent("Create/" + (menuPathAttribute != null ? menuPathAttribute.path : nodeType.Name)), false, () =>
 							{
 								var nodePosition = NodeEditorUtilities.RoundVectorToIntegerValues(ConvertScreenCoordsToZoomCoords(mousePosition));
 								GetNodeGraphData(CurrentTarget).CreateNode(nodeType, nodePosition, nodeType.Name);

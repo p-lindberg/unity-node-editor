@@ -50,13 +50,19 @@ namespace DataDesigner
 				return foundType;
 			}
 			else
+			{
+				typeCache[typeName] = null;
 				return null;
+			}
 		}
 
 		public static IEnumerable<Type> GetDerivedTypes(Type baseType, bool includeBase, bool includeAbstract)
 		{
 			if (includeBase)
-				yield return baseType;
+			{
+				if (!baseType.IsAbstract || (baseType.IsAbstract && includeAbstract))
+					yield return baseType;
+			}
 
 			foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
 				foreach (var type in assembly.GetTypes())
@@ -79,6 +85,66 @@ namespace DataDesigner
 		public static Vector2 RoundVectorToIntegerValues(Vector2 vector)
 		{
 			return new Vector2(Mathf.RoundToInt(vector.x), Mathf.RoundToInt(vector.y));
+		}
+
+		public static IEnumerable<SerializedProperty> GetExposedObjectFields(SerializedObject serializedObject, bool enterChildren = false, Type type = null, bool assignableFrom = false)
+		{
+			var iterator = serializedObject.GetIterator();
+			var doContinue = iterator.NextVisible(true);
+			while (doContinue)
+			{
+				if (iterator.propertyType == SerializedPropertyType.ObjectReference)
+				{
+					if (type != null)
+					{
+						var propertyType = NodeEditorUtilities.GetPropertyType(iterator);
+						if (propertyType != null)
+						{
+							if (assignableFrom)
+							{
+								if (propertyType.IsAssignableFrom(type))
+									yield return iterator;
+							}
+							else if (propertyType == type)
+								yield return iterator;
+						}
+					}
+					else
+						yield return iterator;
+				}
+
+				doContinue = iterator.NextVisible(enterChildren);
+			}
+		}
+
+		public static IEnumerable<SerializedProperty> GetExposedObjectArrays(SerializedObject serializedObject, bool enterChildren = false, Type type = null, bool assignableFrom = false)
+		{
+			var iterator = serializedObject.GetIterator();
+			var doContinue = iterator.NextVisible(true);
+			while (doContinue)
+			{
+				if (iterator.isArray)
+				{
+					if (type != null)
+					{
+						var propertyType = NodeEditorUtilities.GetPropertyElementType(iterator);
+						if (propertyType != null)
+						{
+							if (assignableFrom)
+							{
+								if (propertyType.IsAssignableFrom(type))
+									yield return iterator;
+							}
+							else if (propertyType == type)
+								yield return iterator;
+						}
+					}
+					else
+						yield return iterator;
+				}
+
+				doContinue = iterator.NextVisible(enterChildren);
+			}
 		}
 	}
 }
