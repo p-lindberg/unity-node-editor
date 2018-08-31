@@ -225,7 +225,7 @@ namespace DataDesigner
 					genericMenu.AddItem(new GUIContent("Set as/" + propertyCopy.displayName), false, () =>
 						{
 							propertyCopy.serializedObject.Update();
-							propertyCopy.InsertArrayElementAtIndex(propertyCopy.arraySize - 1);
+							propertyCopy.InsertArrayElementAtIndex(propertyCopy.arraySize);
 							var insertedProperty = propertyCopy.GetArrayElementAtIndex(propertyCopy.arraySize - 1);
 							insertedProperty.objectReferenceValue = nodeData.nodeObject;
 							propertyCopy.serializedObject.ApplyModifiedProperties();
