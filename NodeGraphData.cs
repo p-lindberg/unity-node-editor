@@ -18,7 +18,7 @@ namespace DataDesigner
 			public int id;
 			public UnityEngine.Object nodeObject;
 			public Vector2 graphPosition;
-			public bool isExpanded;
+			public bool isExpanded = true;
 			public UnityEngine.Object nestedObjects;
 
 			public override bool Equals(object obj)
@@ -44,7 +44,7 @@ namespace DataDesigner
 
 		[SerializeField] UnityEngine.Object graphObject;
 
-		#if UNITY_EDITOR
+#if UNITY_EDITOR
 
 		public bool IncludeGraphAsNode
 		{
@@ -55,7 +55,7 @@ namespace DataDesigner
 			set
 			{
 				if (value && !IncludeGraphAsNode)
-					nodes.Add(new NodeData() { id = 0, nodeObject = graphObject, graphPosition = Vector2.zero, isExpanded = false });
+					nodes.Add(new NodeData() { id = 0, nodeObject = graphObject, graphPosition = Vector2.zero });
 				else if (!value && IncludeGraphAsNode)
 					nodes.RemoveAll(x => x.nodeObject == graphObject);
 			}
@@ -87,6 +87,6 @@ namespace DataDesigner
 			if (nodes.Exists(x => x.nodeObject == node))
 				nodes.RemoveAll(x => x.nodeObject == node);
 		}
-		#endif
+#endif
 	}
 }
