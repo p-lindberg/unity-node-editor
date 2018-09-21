@@ -11,12 +11,30 @@ namespace DataDesigner
 {
 	public static class NodeEditorUtilities
 	{
+		static BindingFlags BindingFlags => BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy;
+
 		public const BindingFlags StandardBindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy;
 
 		public static Type GetPropertyType(SerializedProperty property)
 		{
-			var typeName = GetPropertyTypeName(property.type);
-			return GetTypeByName(typeName);
+			return GetTypeViaPath(property.serializedObject.targetObject.GetType(), property.propertyPath);
+			//var typeName = GetPropertyTypeName(property.type);
+			//return GetTypeByName(typeName);
+		}
+
+		public static Type GetTypeViaPath(this Type rootType, string path)
+		{
+			var pathWithoutArrayIndices = Regex.Replace(path, @"Array.data\[(.*)\]", "");
+			string[] fieldNames = pathWithoutArrayIndices.Split('.');
+			var type = rootType;
+			foreach (string fieldName in fieldNames)
+			{
+				type = type.IsArray ? type.GetElementType() : type.GetField(fieldName, BindingFlags)?.FieldType;
+				if (type == null)
+					break;
+			}
+
+			return type;
 		}
 
 		public static Type GetPropertyElementType(SerializedProperty property)
