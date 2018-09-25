@@ -351,6 +351,7 @@ namespace DataDesigner
 			var propertyType = NodeEditorUtilities.GetPropertyType(property);
 			if (propertyType.GetCustomAttributes(typeof(EmbeddedAttribute), true).Any())
 			{
+				EditorGUILayout.BeginVertical(Settings.EmbeddedObject);
 				if (property.objectReferenceValue != null)
 				{
 					var nestedIterator = GetNestedPropertyIterator(property);
@@ -395,6 +396,7 @@ namespace DataDesigner
 
 					currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
 				}
+				EditorGUILayout.EndVertical();
 			}
 			else
 			{
