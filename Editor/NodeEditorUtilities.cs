@@ -15,11 +15,43 @@ namespace DataDesigner
 
 		public const BindingFlags StandardBindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy;
 
+		/// <summary>
+		/// Gets the property field info. For array items, will return field info of the array itself.
+		/// </summary>
+		public static FieldInfo GetPropertyFieldInfo(SerializedProperty property)
+		{
+			return GetFieldInfoViaPath(property.serializedObject.targetObject.GetType(), property.propertyPath);
+		}
+
+		public static FieldInfo GetFieldInfoViaPath(this Type rootType, string path)
+		{
+			var pathWithoutArrayIndices = Regex.Replace(path, @"Array.data\[(.*)\]", "");
+			string[] fieldNames = pathWithoutArrayIndices.Split('.');
+			var type = rootType;
+			FieldInfo fieldInfo = null;
+			foreach (string fieldName in fieldNames)
+			{
+				if (type.IsArray)
+					type = type.GetElementType();
+				else
+				{
+					fieldInfo = GetFieldIncludingPrivateBaseFields(type, fieldName);
+					type = fieldInfo?.FieldType;
+				}
+
+				if (type == null)
+					break;
+			}
+
+			return fieldInfo;
+		}
+
 		public static Type GetPropertyType(SerializedProperty property)
 		{
+			if (property.serializedObject.targetObject == null)
+				return null;
+
 			return GetTypeViaPath(property.serializedObject.targetObject.GetType(), property.propertyPath);
-			//var typeName = GetPropertyTypeName(property.type);
-			//return GetTypeByName(typeName);
 		}
 
 		public static Type GetTypeViaPath(this Type rootType, string path)
@@ -29,12 +61,28 @@ namespace DataDesigner
 			var type = rootType;
 			foreach (string fieldName in fieldNames)
 			{
-				type = type.IsArray ? type.GetElementType() : type.GetField(fieldName, BindingFlags)?.FieldType;
+				type = type.IsArray ? type.GetElementType() : GetFieldIncludingPrivateBaseFields(type, fieldName)?.FieldType;
 				if (type == null)
 					break;
 			}
 
 			return type;
+		}
+
+		static FieldInfo GetFieldIncludingPrivateBaseFields(Type type, string fieldName)
+		{
+			FieldInfo fieldInfo = null;
+			while (fieldInfo == null)
+			{
+				fieldInfo = type.GetField(fieldName, BindingFlags);
+				if (fieldInfo == null)
+				{
+					type = type.BaseType;
+					if (type == typeof(object))
+						break;
+				}
+			}
+			return fieldInfo;
 		}
 
 		public static Type GetPropertyElementType(SerializedProperty property)

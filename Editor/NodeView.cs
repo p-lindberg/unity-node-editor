@@ -31,7 +31,7 @@ public class TextInputPopup : PopupWindowContent
 
 	public override void OnOpen()
 	{
-		
+
 	}
 
 	public override void OnClose()
@@ -239,7 +239,7 @@ namespace DataDesigner
 
 			serializedObject.Update();
 			foreach (var nestedObject in nestedObjects)
-				nestedObject.Value.Update();			
+				nestedObject.Value.Update();
 
 			currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
 
@@ -251,17 +251,17 @@ namespace DataDesigner
 					propertyIterator = serializedObject.GetIterator();
 				else
 					propertyIterator.Reset();
-				
+
 				if (propertyIterator.NextVisible(true))
 					DrawPropertiesRecursive(propertyIterator, 0);
 
 				EditorGUILayout.EndVertical();
 			}
-				
+
 			serializedObject.ApplyModifiedProperties();
 			foreach (var nestedObject in nestedObjects)
 				nestedObject.Value.ApplyModifiedProperties();
-			
+
 			EditorGUILayout.EndVertical();
 
 			currentPropertyHeight = 0f;
@@ -275,7 +275,7 @@ namespace DataDesigner
 			{
 				if (Settings.IndentNested)
 					EditorGUI.indentLevel = iterator.depth + indentationDepth;
-				
+
 				doContinue = DrawProperty(iterator, propertyDepth, indentationDepth);
 			}
 
@@ -295,8 +295,20 @@ namespace DataDesigner
 			}
 		}
 
+		void DrawPropertyDecorators(SerializedProperty property)
+		{
+			var fieldInfo = NodeEditorUtilities.GetPropertyFieldInfo(property);
+			var headers = fieldInfo.GetCustomAttributes(typeof(HeaderAttribute), true).Cast<HeaderAttribute>();
+			foreach (var header in headers.OrderBy(x => x.order))
+			{
+				EditorGUILayout.LabelField(header.header, EditorStyles.boldLabel);
+			}
+		}
+
 		bool DrawNestedClass(SerializedProperty property, int propertyDepth, int indentationDepth, bool showDisplayName = true)
 		{
+			DrawPropertyDecorators(property);
+
 			property.isExpanded = EditorGUILayout.Foldout(property.isExpanded, property.displayName, true);
 			currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
 
@@ -346,16 +358,33 @@ namespace DataDesigner
 			return nestedSerializedObject.GetIterator();
 		}
 
+		bool isFirstNested = false;
+
 		void DrawObjectField(SerializedProperty property, int indentationDepth, bool showDisplayName = true)
 		{
 			var propertyType = NodeEditorUtilities.GetPropertyType(property);
+			if (propertyType == null)
+				return;
+
 			if (propertyType.GetCustomAttributes(typeof(EmbeddedAttribute), true).Any())
 			{
-				EditorGUILayout.BeginVertical(Settings.EmbeddedObject);
+				DrawPropertyDecorators(property);
+
+				if (showDisplayName)
+					EditorGUILayout.LabelField(property.displayName, EditorStyles.boldLabel);
+
+				// Because unity seems to add an extra standard vertical spacing when drawing a
+				// group inside a group, but only the first one.
+				if (isFirstNested)
+					currentPropertyHeight += EditorGUIUtility.standardVerticalSpacing;
+
+				GUILayout.BeginVertical(Settings.EmbeddedObject);
+				currentPropertyHeight += EditorGUIUtility.standardVerticalSpacing;
+				isFirstNested = true;
 				if (property.objectReferenceValue != null)
 				{
 					var nestedIterator = GetNestedPropertyIterator(property);
-						
+
 					EditorGUILayout.BeginHorizontal();
 					nestedIterator.isExpanded = EditorGUILayout.Foldout(nestedIterator.isExpanded, property.objectReferenceValue.name, Settings.Foldouts);
 
@@ -381,7 +410,6 @@ namespace DataDesigner
 						NodeEditor.DestroyEmbeddedObject(instance);
 					}
 					EditorGUILayout.EndHorizontal();
-
 					if (nestedIterator.isExpanded && nestedIterator.NextVisible(true))
 						DrawPropertiesRecursive(nestedIterator, indentationDepth);
 				}
@@ -396,7 +424,11 @@ namespace DataDesigner
 
 					currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
 				}
-				EditorGUILayout.EndVertical();
+
+				isFirstNested = false;
+				GUILayout.Space(EditorGUIUtility.standardVerticalSpacing);
+				currentPropertyHeight += EditorGUIUtility.standardVerticalSpacing;
+				GUILayout.EndVertical();
 			}
 			else
 			{
@@ -405,6 +437,9 @@ namespace DataDesigner
 
 				DrawPropertyField(property, showDisplayName);
 			}
+
+			GUILayout.Space(EditorGUIUtility.standardVerticalSpacing);
+			currentPropertyHeight += EditorGUIUtility.standardVerticalSpacing;
 		}
 
 		void DrawObjectCreationMenu(SerializedProperty property)
@@ -432,12 +467,14 @@ namespace DataDesigner
 				EditorGUILayout.PropertyField(property);
 			else
 				EditorGUILayout.PropertyField(property, GUIContent.none);
-			
+
 			currentPropertyHeight += EditorGUI.GetPropertyHeight(property) + EditorGUIUtility.standardVerticalSpacing;
 		}
 
 		bool DrawArray(SerializedProperty property, int basePropertyDepth, int indentationDepth, bool showDisplayName = true)
 		{
+			DrawPropertyDecorators(property);
+
 			property.isExpanded = DrawArrayHeader(property.isExpanded, property);
 
 			var arrayProperty = property.Copy();
@@ -458,7 +495,7 @@ namespace DataDesigner
 
 					if (GUILayout.Button(new GUIContent(">"), GUILayout.Width(15), GUILayout.Height(12)))
 						DrawArrayControls(arrayProperty, index);
-				
+
 					EditorGUILayout.BeginVertical();
 					doContinue = DrawProperty(property, basePropertyDepth, indentationDepth, showDisplayName: false);
 					EditorGUILayout.EndVertical();
@@ -466,7 +503,7 @@ namespace DataDesigner
 				}
 				else
 					doContinue = property.NextVisible(false);
-				
+
 				index++;
 			}
 
@@ -483,7 +520,7 @@ namespace DataDesigner
 				property.DeleteArrayElementAtIndex(property.arraySize - 1);
 				isExpanded = true;
 			}
-			
+
 			if (GUILayout.Button("+", GUILayout.Width(15), GUILayout.Height(12)))
 			{
 				property.InsertArrayElementAtIndex(property.arraySize);
@@ -495,7 +532,7 @@ namespace DataDesigner
 			}
 
 			EditorGUILayout.EndHorizontal();
-			
+
 			currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
 			return isExpanded;
 		}
@@ -522,7 +559,7 @@ namespace DataDesigner
 						arrayProperty.MoveArrayElement(index, index + 1);
 						arrayProperty.serializedObject.ApplyModifiedProperties();
 					});
-					
+
 			genericMenu.ShowAsContext();
 		}
 
