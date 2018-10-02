@@ -302,6 +302,7 @@ namespace DataDesigner
 			foreach (var header in headers.OrderBy(x => x.order))
 			{
 				EditorGUILayout.LabelField(header.header, EditorStyles.boldLabel);
+				currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
 			}
 		}
 
@@ -371,7 +372,10 @@ namespace DataDesigner
 				DrawPropertyDecorators(property);
 
 				if (showDisplayName)
+				{
 					EditorGUILayout.LabelField(property.displayName, EditorStyles.boldLabel);
+					currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
+				}
 
 				// Because unity seems to add an extra standard vertical spacing when drawing a
 				// group inside a group, but only the first one.
