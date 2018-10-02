@@ -11,7 +11,7 @@ namespace DataDesigner
 {
 	public static class NodeEditorUtilities
 	{
-		static BindingFlags BindingFlags => BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy;
+		static BindingFlags BindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy;
 
 		public const BindingFlags StandardBindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy;
 
@@ -36,7 +36,7 @@ namespace DataDesigner
 				else
 				{
 					fieldInfo = GetFieldIncludingPrivateBaseFields(type, fieldName);
-					type = fieldInfo?.FieldType;
+					type = fieldInfo != null ? fieldInfo.FieldType : null;
 				}
 
 				if (type == null)
@@ -61,7 +61,14 @@ namespace DataDesigner
 			var type = rootType;
 			foreach (string fieldName in fieldNames)
 			{
-				type = type.IsArray ? type.GetElementType() : GetFieldIncludingPrivateBaseFields(type, fieldName)?.FieldType;
+				if (type.IsArray)
+					type = type.GetElementType();
+				else
+				{
+					var field = GetFieldIncludingPrivateBaseFields(type, fieldName);
+					type = field != null ? field.FieldType : null;
+				}
+
 				if (type == null)
 					break;
 			}
