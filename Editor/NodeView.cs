@@ -43,7 +43,7 @@ public class TextInputPopup : PopupWindowContent
 // TODO: Highlight selected, highlight when mousing over a connectable node while connecting
 namespace DataDesigner
 {
-	public class NodeView
+	public class NodeView : IView, IObjectView
 	{
 		public event System.Action<GenericMenu> OnShowContextMenu;
 
@@ -55,7 +55,20 @@ namespace DataDesigner
 
 		public virtual GUIStyle GUIStyle { get { return Settings.GUIStyle; } }
 
-		public UnityEngine.Object NodeObject { get { return nodeData.nodeObject; } }
+		public UnityEngine.Object ViewObject { get { return nodeData.nodeObject; } }
+
+		public IReadOnlyDictionary<UnityEngine.Object, EmbeddedObjectHandle> EmbeddedObjectHandles { get { return embeddedObjectHandles; } }
+
+		public IEnumerable<IView> SubViews
+		{
+			get
+			{
+				foreach (var view in embeddedObjectHandles.Values)
+					yield return view;
+				foreach (var view in nodeConnectors.Values)
+					yield return view;
+			}
+		}
 
 		float currentPropertyHeight;
 		bool dragging;
@@ -66,6 +79,7 @@ namespace DataDesigner
 		SerializedProperty propertyIterator;
 
 		Dictionary<KeyPair<SerializedObject, string>, NodeConnector> nodeConnectors = new Dictionary<KeyPair<SerializedObject, string>, NodeConnector>();
+		Dictionary<UnityEngine.Object, EmbeddedObjectHandle> embeddedObjectHandles = new Dictionary<UnityEngine.Object, EmbeddedObjectHandle>();
 		Dictionary<object, SerializedObject> nestedObjects = new Dictionary<object, SerializedObject>();
 
 		System.Action postDraw;
@@ -86,6 +100,18 @@ namespace DataDesigner
 		{
 			var minSize = nodeData.isExpanded ? Settings.MinimumSize : Settings.MinimumSizeCollapsed;
 			return new Rect(origin + nodeData.graphPosition, minSize);
+		}
+
+		EmbeddedObjectHandle GetEmbeddedObjectHandle(UnityEngine.Object embeddedObject)
+		{
+			EmbeddedObjectHandle embeddedObjectHandle;
+			if (embeddedObjectHandles.TryGetValue(embeddedObject, out embeddedObjectHandle))
+				return embeddedObjectHandle;
+
+			embeddedObjectHandle = new EmbeddedObjectHandle(this, embeddedObject);
+			embeddedObjectHandle.OnDeath += () => postDraw += () => embeddedObjectHandles.Remove(embeddedObject);
+			embeddedObjectHandles[embeddedObject] = embeddedObjectHandle;
+			return embeddedObjectHandle;
 		}
 
 		NodeConnector GetNodeConnector(SerializedObject serializedObject, string propertyPath)
@@ -119,7 +145,10 @@ namespace DataDesigner
 				size = newRect.size;
 
 			foreach (var nodeConnector in nodeConnectors.Values)
-				nodeConnector.Draw();
+				nodeConnector.Draw(origin);
+
+			foreach (var embeddedObjectHandle in embeddedObjectHandles.Values)
+				embeddedObjectHandle.Draw(origin);
 
 			if (dragging)
 				nodeData.graphPosition = NodeEditorUtilities.RoundVectorToIntegerValues(newRect.position - origin);
@@ -367,7 +396,8 @@ namespace DataDesigner
 			if (propertyType == null)
 				return;
 
-			if (propertyType.GetCustomAttributes(typeof(EmbeddedAttribute), true).Any())
+			var fieldInfo = NodeEditorUtilities.GetPropertyFieldInfo(property);
+			if (fieldInfo.GetCustomAttributes(typeof(EmbeddedAttribute), true).Any())
 			{
 				DrawPropertyDecorators(property);
 
@@ -391,6 +421,8 @@ namespace DataDesigner
 
 					EditorGUILayout.BeginHorizontal();
 					nestedIterator.isExpanded = EditorGUILayout.Foldout(nestedIterator.isExpanded, property.objectReferenceValue.name, Settings.Foldouts);
+
+					GetEmbeddedObjectHandle(property.objectReferenceValue).SetDrawProperties(currentPropertyHeight, true);
 
 					if (Event.current.type == EventType.MouseDown && Event.current.button == 1)
 					{
@@ -437,7 +469,11 @@ namespace DataDesigner
 			else
 			{
 				if (propertyType.GetCustomAttributes(typeof(NodeAttribute), true).Any())
-					GetNodeConnector(property.serializedObject, property.propertyPath).SetDrawProperties(currentPropertyHeight, true);
+				{
+					var alignAttribute = (AlignAttribute)fieldInfo.GetCustomAttributes(typeof(AlignAttribute), true).FirstOrDefault();
+					var alignment = alignAttribute != null ? alignAttribute.alignment : Alignment.Auto;
+					GetNodeConnector(property.serializedObject, property.propertyPath).SetDrawProperties(currentPropertyHeight, true, alignment);
+				}
 
 				DrawPropertyField(property, showDisplayName);
 			}
@@ -583,9 +619,10 @@ namespace DataDesigner
 				else if (iterator.propertyType == SerializedPropertyType.ObjectReference)
 				{
 					var propertyType = NodeEditorUtilities.GetPropertyType(iterator);
+					var fieldInfo = NodeEditorUtilities.GetPropertyFieldInfo(iterator);
 					if (propertyType != null)
 					{
-						if (propertyType.GetCustomAttributes(typeof(EmbeddedAttribute), true).Any() && iterator.objectReferenceValue != null)
+						if (fieldInfo.GetCustomAttributes(typeof(EmbeddedAttribute), true).Any() && iterator.objectReferenceValue != null)
 						{
 							var nestedIterator = GetNestedPropertyIterator(iterator);
 							FindConnectionsRecursive(nestedIterator);
