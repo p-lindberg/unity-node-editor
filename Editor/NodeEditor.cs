@@ -45,6 +45,7 @@ namespace DataDesigner
 		Vector2 currentMousePosition;
 		Dictionary<NodeGraphData.NodeData, NodeView> nodeViews = new Dictionary<NodeGraphData.NodeData, NodeView>();
 		Dictionary<UnityEngine.Object, NodeGraphData> nodeGraphDataMap = new Dictionary<UnityEngine.Object, NodeGraphData>();
+		Stack<UnityEngine.Object> graphStack = new Stack<UnityEngine.Object>();
 
 		static NodeEditorSettings settings;
 
@@ -89,7 +90,12 @@ namespace DataDesigner
 		{
 			var window = Init<NodeEditor>("Node Editor");
 			if (target != null)
+			{
+				if (window.CurrentTarget != null)
+					window.graphStack.Push(window.CurrentTarget);
+
 				window.CurrentTarget = target;
+			}
 
 			window.Reset();
 			window.wantsMouseMove = true;
@@ -105,11 +111,23 @@ namespace DataDesigner
 		{
 			base.DrawUtilityBarContents();
 
+			if (GUILayout.Button("Back", EditorStyles.toolbarButton))
+				GoBack();
+
 			if (GUILayout.Button("Clean", EditorStyles.toolbarButton))
 				RemoveUnreachableObjects();
 
 			GUILayout.FlexibleSpace();
 			GUILayout.Label(CurrentTarget != null ? CurrentTarget.name : "No graph selected", Settings.GraphHeaderStyle);
+		}
+
+		void GoBack()
+		{
+			if (graphStack.Count > 0)
+			{
+				currentTarget = graphStack.Pop();
+				Reset();
+			}
 		}
 
 		[MenuItem("Assets/Edit in Node Editor")]
@@ -369,7 +387,12 @@ namespace DataDesigner
 
 			if (Event.current.type == EventType.MouseDown)
 			{
-				if (Event.current.button == 0)
+				if (Event.current.button == 3)
+				{
+					GoBack();
+					Event.current.Use();
+				}
+				else if (Event.current.button == 0)
 				{
 					foreach (var nodeView in nodeViews.Values)
 						nodeView.ResetFocus();
