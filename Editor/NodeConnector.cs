@@ -22,14 +22,16 @@ namespace DataDesigner
 
 		public bool Dead { get; private set; }
 
-		SerializedObject serializedObject;
+		public Rect Rect { get; private set; }
+
+		public SerializedObject SerializedObject { get; private set; }
 		bool visible;
 		float height;
 
 		public NodeConnector(NodeView nodeView, SerializedObject serializedObject, string propertyPath)
 		{
 			this.NodeView = nodeView;
-			this.serializedObject = serializedObject;
+			this.SerializedObject = serializedObject;
 			this.PropertyPath = propertyPath;
 			LeftGUIStyle = new GUIStyle(NodeEditor.Settings.DefaultNodeViewSettings.LeftConnectorStyle);
 			RightGUIStyle = new GUIStyle(NodeEditor.Settings.DefaultNodeViewSettings.RightConnectorStyle);
@@ -82,11 +84,11 @@ namespace DataDesigner
 
 		public void Draw()
 		{
-			var rect = GetRect(left: false);
+			Rect = GetRect(left: false);
 			var guiStyle = RightGUIStyle;
 			bool active = false;
 
-			var property = serializedObject.FindProperty(PropertyPath);
+			var property = SerializedObject.FindProperty(PropertyPath);
 			if (property == null)
 			{
 				Dead = true;
@@ -99,37 +101,50 @@ namespace DataDesigner
 			var currentTarget = property.objectReferenceValue;
 			if (currentTarget != null)
 			{
-				var targetNodeView = NodeView.NodeEditor.GetNodeView(currentTarget);
-				if (targetNodeView != null)
+				Rect targetRect = default(Rect);
+
+				var targetType = NodeEditorUtilities.GetPropertyType(property);
+				if (targetType.IsDefined(typeof(SocketAttribute), true))
 				{
-					if (targetNodeView.GetWindowRect().position.x < NodeView.GetWindowRect().position.x)
-					{
-						rect = GetRect(left: true);
-						guiStyle = LeftGUIStyle;
-					}
-
-					if (!Connecting)
-						Handles.DrawLine(rect.center, targetNodeView.GetWindowRect().center);
-
-					active = true;
+					var targetConnector = NodeView.NodeEditor.GetSocketConnector(currentTarget);
+					if (targetConnector != null)
+						targetRect = targetConnector.Rect;
 				}
+				else
+				{
+					var targetNodeView = NodeView.NodeEditor.GetNodeView(currentTarget);
+					if (targetNodeView != null)
+						targetRect = targetNodeView.GetWindowRect();
+				}
+
+
+				if (targetRect.position.x < NodeView.GetWindowRect().position.x)
+				{
+					Rect = GetRect(left: true);
+					guiStyle = LeftGUIStyle;
+				}
+
+				if (!Connecting)
+					Handles.DrawLine(Rect.center, targetRect.center);
+
+				active = true;
 			}
 
 			if (Connecting)
 			{
-				Handles.DrawLine(rect.center, Event.current.mousePosition);
+				Handles.DrawLine(Rect.center, Event.current.mousePosition);
 				active = true;
 			}
 
 			if (active)
 				SwitchActiveState(guiStyle);
 
-			GUI.Box(rect, "", guiStyle);
+			GUI.Box(Rect, "", guiStyle);
 
 			if (active)
 				SwitchActiveState(guiStyle);
 
-			HandleConnectorEvents(rect);
+			HandleConnectorEvents(Rect);
 			ResetDrawProperties();
 		}
 
@@ -148,14 +163,17 @@ namespace DataDesigner
 				Event.current.Use();
 			}
 			else if (Connecting && ((Event.current.type == EventType.MouseUp && Event.current.button == 0)
-			         || (Event.current.type == EventType.MouseLeaveWindow)))
+					 || (Event.current.type == EventType.MouseLeaveWindow)))
 			{
 				var hit = NodeView.NodeEditor.GetNodeViewAtMousePosition(Event.current.mousePosition);
 				if (hit != null)
 					ConnectTo(hit.nodeObject);
 				else
 				{
-					if (!connectorRect.Contains(Event.current.mousePosition) || Event.current.alt)
+					var connectorHit = NodeView.NodeEditor.GetNodeConnectorAtPosition(Event.current.mousePosition);
+					if (connectorHit != null)
+						ConnectTo(connectorHit.SerializedObject.targetObject);
+					else if (!connectorRect.Contains(Event.current.mousePosition) || Event.current.alt)
 						ConnectTo(null);
 				}
 
@@ -167,9 +185,9 @@ namespace DataDesigner
 
 		void ConnectTo(UnityEngine.Object target)
 		{
-			var property = serializedObject.FindProperty(PropertyPath);
+			var property = SerializedObject.FindProperty(PropertyPath);
 			property.objectReferenceValue = target;
-			serializedObject.ApplyModifiedProperties();
+			SerializedObject.ApplyModifiedProperties();
 		}
 	}
 }

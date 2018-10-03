@@ -34,7 +34,7 @@ namespace DataDesigner
 			{
 				if (CurrentTarget == null)
 					return null;
-				
+
 				if (currentTargetSerializedObject == null)
 					currentTargetSerializedObject = new SerializedObject(CurrentTarget);
 
@@ -157,7 +157,7 @@ namespace DataDesigner
 
 				return nodeView;
 			}
-				
+
 			var newNodeView = new NodeView(this, nodeData);
 			SetupNodeView(newNodeView, nodeData);
 			nodeViews[nodeData] = newNodeView;
@@ -183,7 +183,7 @@ namespace DataDesigner
 					{
 						nodeGraphData = GetNodeGraphData(nodeData.nodeObject);
 						nodeViews.Remove(nodeData);
-					});	
+					});
 			}
 			else
 			{
@@ -283,10 +283,10 @@ namespace DataDesigner
 		{
 			if (graph == null)
 				graph = CurrentTarget;
-			
+
 			foreach (var subAsset in AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(graph)))
 				EditorUtility.SetDirty(subAsset);
-			
+
 			AssetDatabase.SaveAssets();
 		}
 
@@ -396,7 +396,7 @@ namespace DataDesigner
 				}
 			}
 			else if (Event.current.type == EventType.MouseMove
-			         || Event.current.type == EventType.MouseDrag)
+					 || Event.current.type == EventType.MouseDrag)
 				Repaint();
 			else if (Event.current.type == EventType.ValidateCommand)
 			{
@@ -431,6 +431,26 @@ namespace DataDesigner
 		public NodeGraphData.NodeData GetNodeViewAtMousePosition(Vector3 screenPosition)
 		{
 			return nodeViews.FirstOrDefault(x => x.Value.GetWindowRect().Contains(screenPosition)).Key;
+		}
+
+		public NodeConnector GetNodeConnectorAtPosition(Vector3 screenPosition)
+		{
+			foreach (var nodeView in nodeViews)
+				foreach (var connector in nodeView.Value.Connectors)
+					if (connector.Rect.Contains(screenPosition))
+						return connector;
+
+			return null;
+		}
+
+		public NodeConnector GetSocketConnector(UnityEngine.Object socketObject)
+		{
+			foreach (var nodeView in nodeViews)
+				foreach (var connector in nodeView.Value.Connectors)
+					if (connector.SerializedObject.targetObject == socketObject)
+						return connector;
+
+			return null;
 		}
 
 		public NodeView GetNodeView(UnityEngine.Object nodeObject)
@@ -475,7 +495,7 @@ namespace DataDesigner
 				FindReachableObjects(node, reachableObjects);
 				reachableObjects.Add(node);
 			}
-			
+
 			reachableObjects.Add(nodeGraphData);
 			reachableObjects.Add(CurrentTarget);
 
@@ -501,7 +521,7 @@ namespace DataDesigner
 					if (reachableObjects.Add(iterator.objectReferenceValue))
 						FindReachableObjects(iterator.objectReferenceValue, reachableObjects);
 				}
-			} while(iterator.Next(true));
+			} while (iterator.Next(true));
 		}
 	}
 }

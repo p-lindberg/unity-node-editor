@@ -57,6 +57,8 @@ namespace DataDesigner
 
 		public UnityEngine.Object NodeObject { get { return nodeData.nodeObject; } }
 
+		public IEnumerable<NodeConnector> Connectors { get { return nodeConnectors.Values; } }
+
 		float currentPropertyHeight;
 		bool dragging;
 		Vector2 origin;
@@ -360,13 +362,43 @@ namespace DataDesigner
 
 		bool isFirstNested = false;
 
+		SerializedProperty FindSocketTargetProperty(SerializedProperty iterator)
+		{
+			while (iterator.Next(true))
+			{
+				var fieldInfo = NodeEditorUtilities.GetPropertyFieldInfo(iterator);
+				if (fieldInfo != null && fieldInfo.IsDefined(typeof(SocketTargetAttribute), true))
+					return iterator;
+			}
+
+			return null;
+		}
+
 		void DrawObjectField(SerializedProperty property, int indentationDepth, bool showDisplayName = true)
 		{
 			var propertyType = NodeEditorUtilities.GetPropertyType(property);
 			if (propertyType == null)
 				return;
 
-			if (propertyType.GetCustomAttributes(typeof(EmbeddedAttribute), true).Any())
+			var channelAttribute = propertyType.GetCustomAttributes(typeof(SocketAttribute), true).FirstOrDefault() as SocketAttribute;
+			if (channelAttribute != null)
+			{
+				if (showDisplayName)
+					EditorGUILayout.LabelField(property.displayName, EditorStyles.boldLabel);
+
+				if (property.objectReferenceValue == null)
+				{
+					var socket = NodeEditor.CreateEmbeddedObject(propertyType);
+					property.objectReferenceValue = socket;
+					property.serializedObject.ApplyModifiedProperties();
+				}
+
+				var nestedIterator = GetNestedPropertyIterator(property);
+				var socketTargetProperty = FindSocketTargetProperty(nestedIterator);
+
+				GetNodeConnector(socketTargetProperty.serializedObject, socketTargetProperty.propertyPath).SetDrawProperties(currentPropertyHeight, true);
+			}
+			else if (propertyType.GetCustomAttributes(typeof(EmbeddedAttribute), true).Any())
 			{
 				DrawPropertyDecorators(property);
 
