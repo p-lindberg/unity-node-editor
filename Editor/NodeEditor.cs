@@ -9,7 +9,7 @@ using System.Reflection;
 
 namespace DataDesigner
 {
-	public class NodeEditor : ZoomableEditorWindow
+	public class NodeEditor : ZoomableEditorWindow, IView
 	{
 		public event Action PostDraw;
 
@@ -34,7 +34,7 @@ namespace DataDesigner
 			{
 				if (CurrentTarget == null)
 					return null;
-				
+
 				if (currentTargetSerializedObject == null)
 					currentTargetSerializedObject = new SerializedObject(CurrentTarget);
 
@@ -80,10 +80,17 @@ namespace DataDesigner
 				return AssetDatabase.LoadAssetAtPath<NodeEditorSettings>(AssetDatabase.GUIDToAssetPath(settingsGuids[0]));
 		}
 
+		public IEnumerable<IView> SubViews { get { return nodeViews.Values; } }
+
 		[MenuItem("Window/Node Editor")]
 		public static void OpenWindow()
 		{
 			OpenWindow(null);
+		}
+
+		public Rect GetWindowRect()
+		{
+			return position;
 		}
 
 		public static void OpenWindow(UnityEngine.Object target)
@@ -167,7 +174,7 @@ namespace DataDesigner
 			NodeView nodeView;
 			if (nodeViews.TryGetValue(nodeData, out nodeView))
 			{
-				if (nodeView.NodeObject == null)
+				if (nodeView.ViewObject == null)
 				{
 					nodeViews.Remove(nodeData);
 					return GetNodeView(nodeData);
@@ -175,7 +182,7 @@ namespace DataDesigner
 
 				return nodeView;
 			}
-				
+
 			var newNodeView = new NodeView(this, nodeData);
 			SetupNodeView(newNodeView, nodeData);
 			nodeViews[nodeData] = newNodeView;
@@ -201,7 +208,7 @@ namespace DataDesigner
 					{
 						nodeGraphData = GetNodeGraphData(nodeData.nodeObject);
 						nodeViews.Remove(nodeData);
-					});	
+					});
 			}
 			else
 			{
@@ -301,10 +308,10 @@ namespace DataDesigner
 		{
 			if (graph == null)
 				graph = CurrentTarget;
-			
+
 			foreach (var subAsset in AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(graph)))
 				EditorUtility.SetDirty(subAsset);
-			
+
 			AssetDatabase.SaveAssets();
 		}
 
@@ -419,7 +426,7 @@ namespace DataDesigner
 				}
 			}
 			else if (Event.current.type == EventType.MouseMove
-			         || Event.current.type == EventType.MouseDrag)
+					 || Event.current.type == EventType.MouseDrag)
 				Repaint();
 			else if (Event.current.type == EventType.ValidateCommand)
 			{
@@ -451,14 +458,55 @@ namespace DataDesigner
 			);
 		}
 
-		public NodeGraphData.NodeData GetNodeViewAtMousePosition(Vector3 screenPosition)
+		public IView GetViewAtPosition(Vector3 screenPosition)
 		{
-			return nodeViews.FirstOrDefault(x => x.Value.GetWindowRect().Contains(screenPosition)).Key;
+			return GetViewAtPositionRecursive(this, screenPosition);
+		}
+
+		public IView GetViewAtPositionRecursive(IView view, Vector3 screenPosition)
+		{
+			foreach (var subView in view.SubViews)
+			{
+				var foundView = GetViewAtPositionRecursive(subView, screenPosition);
+				if (foundView != null)
+					return foundView;
+
+				if (subView.GetWindowRect().Contains(screenPosition))
+					return subView;
+			}
+
+			return null;
+		}
+
+		public NodeView GetNodeViewAtPosition(Vector3 screenPosition)
+		{
+			return nodeViews.FirstOrDefault(x => x.Value.GetWindowRect().Contains(screenPosition)).Value;
 		}
 
 		public NodeView GetNodeView(UnityEngine.Object nodeObject)
 		{
 			return nodeViews.FirstOrDefault(x => x.Key.nodeObject == nodeObject).Value;
+		}
+
+		public EmbeddedObjectHandle GetEmbeddedObjectHandle(UnityEngine.Object nodeObject)
+		{
+			var kvp = nodeViews.FirstOrDefault(x => x.Value.EmbeddedObjectHandles.ContainsKey(nodeObject));
+			if (kvp.Value != null)
+				return kvp.Value.EmbeddedObjectHandles[nodeObject];
+
+			return null;
+		}
+
+		public EmbeddedObjectHandle GetEmbeddedObjectHandleAtPosition(Vector3 screenPosition)
+		{
+			foreach (var nodeView in nodeViews.Values)
+			{
+				foreach (var handle in nodeView.EmbeddedObjectHandles.Values)
+					if (handle.GetWindowRect().Contains(screenPosition))
+						return handle;
+			}
+
+			return null;
 		}
 
 		public Rect GetNodeViewRect(NodeGraphData.NodeData nodeData)
@@ -498,7 +546,7 @@ namespace DataDesigner
 				FindReachableObjects(node, reachableObjects);
 				reachableObjects.Add(node);
 			}
-			
+
 			reachableObjects.Add(nodeGraphData);
 			reachableObjects.Add(CurrentTarget);
 
@@ -524,7 +572,7 @@ namespace DataDesigner
 					if (reachableObjects.Add(iterator.objectReferenceValue))
 						FindReachableObjects(iterator.objectReferenceValue, reachableObjects);
 				}
-			} while(iterator.Next(true));
+			} while (iterator.Next(true));
 		}
 	}
 }
