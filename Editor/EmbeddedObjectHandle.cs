@@ -34,12 +34,7 @@ namespace DataDesigner
 
 		}
 
-		protected override void ConnectToObject(UnityEngine.Object target)
-		{
-
-		}
-
-		protected override void ConnectWithProperty(SerializedProperty property)
+		void ConnectWithProperty(SerializedProperty property)
 		{
 			var propertyType = NodeEditorUtilities.GetPropertyType(property);
 			if (propertyType.IsAssignableFrom(ViewObject.GetType()))
@@ -47,6 +42,13 @@ namespace DataDesigner
 				property.objectReferenceValue = ViewObject;
 				property.serializedObject.ApplyModifiedProperties();
 			}
+		}
+
+		protected override void ConnectTo(IView hitView)
+		{
+			var propertyView = hitView as IPropertyView;
+			if (propertyView != null)
+				ConnectWithProperty(propertyView.ViewProperty);
 		}
 
 		protected override void Disconnect()

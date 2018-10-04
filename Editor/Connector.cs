@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using System;
+using System.Reflection;
 
 namespace DataDesigner
 {
@@ -158,12 +159,7 @@ namespace DataDesigner
 				var viewHit = NodeView.NodeEditor.GetViewAtPosition(Event.current.mousePosition);
 
 				if (viewHit != null)
-				{
-					if (viewHit is IObjectView)
-						ConnectToObject(((IObjectView)viewHit).ViewObject);
-					else if (viewHit is IPropertyView)
-						ConnectWithProperty(((IPropertyView)viewHit).ViewProperty);
-				}
+					ConnectTo(viewHit);
 				else if (!connectorRect.Contains(Event.current.mousePosition) || Event.current.alt)
 					Disconnect();
 
@@ -173,9 +169,7 @@ namespace DataDesigner
 			}
 		}
 
-		protected abstract void ConnectToObject(UnityEngine.Object target);
-
-		protected abstract void ConnectWithProperty(SerializedProperty property);
+		protected abstract void ConnectTo(IView hitView);
 
 		protected abstract void Disconnect();
 	}

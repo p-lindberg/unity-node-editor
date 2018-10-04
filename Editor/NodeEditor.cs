@@ -488,6 +488,16 @@ namespace DataDesigner
 			return nodeViews.FirstOrDefault(x => x.Key.nodeObject == nodeObject).Value;
 		}
 
+		public OutputHandle GetOutputHandle(UnityEngine.Object owner, string propertyName)
+		{
+			var key = KeyPair.From(owner, propertyName);
+			var kvp = nodeViews.FirstOrDefault(x => x.Value.OutputHandles.ContainsKey(key));
+			if (kvp.Value != null)
+				return kvp.Value.OutputHandles[key];
+
+			return null;
+		}
+
 		public EmbeddedObjectHandle GetEmbeddedObjectHandle(UnityEngine.Object nodeObject)
 		{
 			var kvp = nodeViews.FirstOrDefault(x => x.Value.EmbeddedObjectHandles.ContainsKey(nodeObject));

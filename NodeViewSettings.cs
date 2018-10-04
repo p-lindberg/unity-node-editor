@@ -72,4 +72,12 @@ public class NodeViewSettings : ScriptableObject
 	[SerializeField] GUIStyle embeddedObjectHandleLeft;
 
 	public GUIStyle EmbeddedObjectHandleLeft { get { return embeddedObjectHandleLeft; } }
+
+	[SerializeField] GUIStyle outputStyle;
+
+	public GUIStyle OutputStyle { get { return outputStyle; } }
+
+	[SerializeField] GUIStyle inputStyle;
+
+	public GUIStyle InputStyle { get { return inputStyle; } }
 }

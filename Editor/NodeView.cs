@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEditor;
 using System.Linq;
 using System;
+using System.Reflection;
 
 public class TextInputPopup : PopupWindowContent
 {
@@ -59,6 +60,8 @@ namespace DataDesigner
 
 		public IReadOnlyDictionary<UnityEngine.Object, EmbeddedObjectHandle> EmbeddedObjectHandles { get { return embeddedObjectHandles; } }
 
+		public IReadOnlyDictionary<KeyPair<UnityEngine.Object, string>, OutputHandle> OutputHandles { get { return outputHandles; } }
+
 		public IEnumerable<IView> SubViews
 		{
 			get
@@ -66,6 +69,10 @@ namespace DataDesigner
 				foreach (var view in embeddedObjectHandles.Values)
 					yield return view;
 				foreach (var view in nodeConnectors.Values)
+					yield return view;
+				foreach (var view in outputHandles.Values)
+					yield return view;
+				foreach (var view in inputHandles.Values)
 					yield return view;
 			}
 		}
@@ -81,6 +88,9 @@ namespace DataDesigner
 		Dictionary<KeyPair<SerializedObject, string>, NodeConnector> nodeConnectors = new Dictionary<KeyPair<SerializedObject, string>, NodeConnector>();
 		Dictionary<UnityEngine.Object, EmbeddedObjectHandle> embeddedObjectHandles = new Dictionary<UnityEngine.Object, EmbeddedObjectHandle>();
 		Dictionary<object, SerializedObject> nestedObjects = new Dictionary<object, SerializedObject>();
+		Dictionary<KeyPair<UnityEngine.Object, string>, OutputHandle> outputHandles = new Dictionary<KeyPair<UnityEngine.Object, string>, OutputHandle>();
+		Dictionary<KeyPair<UnityEngine.Object, string>, InputHandle> inputHandles = new Dictionary<KeyPair<UnityEngine.Object, string>, InputHandle>();
+		HashSet<string> IgnoreProperties = new HashSet<string>();
 
 		System.Action postDraw;
 		bool renaming;
@@ -112,6 +122,32 @@ namespace DataDesigner
 			embeddedObjectHandle.OnDeath += () => postDraw += () => embeddedObjectHandles.Remove(embeddedObject);
 			embeddedObjectHandles[embeddedObject] = embeddedObjectHandle;
 			return embeddedObjectHandle;
+		}
+
+		OutputHandle GetOutputHandle(UnityEngine.Object owner, string propertyName)
+		{
+			OutputHandle outputHandle;
+			var keyPair = KeyPair.From(owner, propertyName);
+			if (outputHandles.TryGetValue(keyPair, out outputHandle))
+				return outputHandle;
+
+			outputHandle = new OutputHandle(this, owner, propertyName);
+			outputHandle.OnDeath += () => postDraw += () => outputHandles.Remove(keyPair);
+			outputHandles[keyPair] = outputHandle;
+			return outputHandle;
+		}
+
+		InputHandle GetInputHandle(SerializedProperty serializedProperty)
+		{
+			InputHandle inputHandle;
+			var keyPair = KeyPair.From(serializedProperty.serializedObject.targetObject, serializedProperty.propertyPath);
+			if (inputHandles.TryGetValue(keyPair, out inputHandle))
+				return inputHandle;
+
+			inputHandle = new InputHandle(this, serializedProperty.Copy());
+			inputHandle.OnDeath += () => postDraw += () => inputHandles.Remove(keyPair);
+			inputHandles[keyPair] = inputHandle;
+			return inputHandle;
 		}
 
 		NodeConnector GetNodeConnector(SerializedObject serializedObject, string propertyPath)
@@ -149,6 +185,12 @@ namespace DataDesigner
 
 			foreach (var embeddedObjectHandle in embeddedObjectHandles.Values)
 				embeddedObjectHandle.Draw(origin);
+
+			foreach (var outputHandle in outputHandles.Values)
+				outputHandle.Draw(origin);
+
+			foreach (var inputHandle in inputHandles.Values)
+				inputHandle.Draw(origin);
 
 			if (dragging)
 				nodeData.graphPosition = NodeEditorUtilities.RoundVectorToIntegerValues(newRect.position - origin);
@@ -264,13 +306,13 @@ namespace DataDesigner
 			DrawHeader();
 			GUILayout.Space(EditorGUIUtility.singleLineHeight - EditorGUIUtility.standardVerticalSpacing);
 
-			currentPropertyHeight += EditorGUIUtility.singleLineHeight + 3 * EditorGUIUtility.standardVerticalSpacing;
+			currentPropertyHeight += 2 * EditorGUIUtility.singleLineHeight + 4 * EditorGUIUtility.standardVerticalSpacing;
+
+			DrawThroughput(serializedObject);
 
 			serializedObject.Update();
 			foreach (var nestedObject in nestedObjects)
 				nestedObject.Value.Update();
-
-			currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
 
 			if (nodeData.isExpanded)
 			{
@@ -313,7 +355,10 @@ namespace DataDesigner
 
 		bool DrawProperty(SerializedProperty iterator, int propertyDepth, int indentationDepth, bool showDisplayName = true)
 		{
-			if (iterator.isArray && iterator.type != "string")
+			var propertyType = NodeEditorUtilities.GetPropertyType(iterator);
+			if (IgnoreProperties.Contains(iterator.propertyPath) || propertyType.IsDefined(typeof(InputTypeAttribute), true))
+				return iterator.NextVisible(false);
+			else if (iterator.isArray && iterator.type != "string")
 				return DrawArray(iterator, propertyDepth, indentationDepth, showDisplayName);
 			else if (iterator.hasVisibleChildren)
 				return DrawNestedClass(iterator, propertyDepth, indentationDepth, showDisplayName);
@@ -322,6 +367,89 @@ namespace DataDesigner
 				DrawField(iterator, indentationDepth, showDisplayName);
 				return iterator.NextVisible(iterator.isExpanded);
 			}
+		}
+
+		bool DrawThroughput(SerializedObject serializedObject)
+		{
+			var targetObjectType = serializedObject.targetObject.GetType();
+			Queue<Action> outputDraws = new Queue<Action>();
+			Queue<Action> inputDraws = new Queue<Action>();
+			Queue<Action> outputWithFieldDraws = new Queue<Action>();
+			foreach (var property in targetObjectType.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy))
+			{
+				if (property.IsDefined(typeof(OutputAttribute), true))
+				{
+					// Find a SerializedProperty with matching name.
+					SerializedProperty matchingProperty = null;
+					var serializedPropertyIterator = serializedObject.GetIterator();
+					while (serializedPropertyIterator.Next(true))
+					{
+						if (serializedPropertyIterator.name.ToLower() == property.Name.ToLower())
+						{
+							matchingProperty = serializedPropertyIterator.Copy();
+							IgnoreProperties.Add(matchingProperty.propertyPath);
+							break;
+						}
+					}
+
+					var queue = matchingProperty != null ? outputWithFieldDraws : outputDraws;
+
+					queue.Enqueue(() =>
+					{
+						GetOutputHandle(serializedObject.targetObject, property.Name).SetDrawProperties(currentPropertyHeight, true, Alignment.Right);
+						var connectionType = property.PropertyType;
+						if (matchingProperty != null)
+						{
+							EditorGUILayout.PropertyField(matchingProperty, false);
+							matchingProperty.serializedObject.ApplyModifiedProperties();
+						}
+						else
+							EditorGUILayout.SelectableLabel(ObjectNames.NicifyVariableName(property.Name), Settings.OutputStyle, GUILayout.Height(EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing));
+					});
+				}
+			}
+
+			var iterator = serializedObject.GetIterator();
+			var doContinue = iterator.Next(true);
+
+			while (doContinue)
+			{
+				var serializedPropertyType = NodeEditorUtilities.GetPropertyType(iterator);
+				if (serializedPropertyType != null && serializedPropertyType.IsDefined(typeof(InputTypeAttribute), true))
+				{
+					var serializedProperty = iterator.Copy();
+					inputDraws.Enqueue(() =>
+					{
+						GetInputHandle(serializedProperty).SetDrawProperties(currentPropertyHeight, true, Alignment.Left);
+						EditorGUILayout.LabelField(serializedProperty.displayName, Settings.InputStyle, GUILayout.Width(5f * serializedProperty.displayName.Length));
+					});
+
+					doContinue = iterator.Next(false);
+				}
+				else
+					doContinue = iterator.Next(true);
+			}
+
+			while (inputDraws.Count > 0 || outputDraws.Count > 0)
+			{
+				EditorGUILayout.BeginHorizontal();
+				if (inputDraws.Count > 0)
+					inputDraws.Dequeue().Invoke();
+
+				if (outputDraws.Count > 0)
+					outputDraws.Dequeue().Invoke();
+				EditorGUILayout.EndHorizontal();
+
+				currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
+			}
+
+			while (outputWithFieldDraws.Count > 0)
+			{
+				outputWithFieldDraws.Dequeue().Invoke();
+				currentPropertyHeight += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
+			}
+
+			return doContinue;
 		}
 
 		void DrawPropertyDecorators(SerializedProperty property)
@@ -609,7 +737,13 @@ namespace DataDesigner
 			var depth = next != false ? iterator.depth : 0;
 			while (next && iterator.depth >= depth)
 			{
-				if (iterator.hasVisibleChildren)
+				var propertyType = NodeEditorUtilities.GetPropertyType(iterator);
+				if (propertyType != null && propertyType.IsDefined(typeof(InputTypeAttribute), true))
+				{
+					next = iterator.NextVisible(false);
+					continue;
+				}
+				else if (iterator.hasVisibleChildren)
 				{
 					if (FindConnectionsRecursive(iterator))
 						continue;
@@ -618,7 +752,6 @@ namespace DataDesigner
 				}
 				else if (iterator.propertyType == SerializedPropertyType.ObjectReference)
 				{
-					var propertyType = NodeEditorUtilities.GetPropertyType(iterator);
 					var fieldInfo = NodeEditorUtilities.GetPropertyFieldInfo(iterator);
 					if (propertyType != null)
 					{

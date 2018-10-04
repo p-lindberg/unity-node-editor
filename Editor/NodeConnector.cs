@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using System;
+using System.Reflection;
 
 namespace DataDesigner
 {
@@ -70,21 +71,23 @@ namespace DataDesigner
 			}
 		}
 
-		protected override void ConnectToObject(UnityEngine.Object target)
+		void ConnectToObject(UnityEngine.Object target)
 		{
 			var property = serializedObject.FindProperty(PropertyPath);
 			property.objectReferenceValue = target;
 			serializedObject.ApplyModifiedProperties();
 		}
 
-		protected override void ConnectWithProperty(SerializedProperty property)
-		{
-
-		}
-
 		protected override void Disconnect()
 		{
 			ConnectToObject(null);
+		}
+
+		protected override void ConnectTo(IView hitView)
+		{
+			var objectView = hitView as IObjectView;
+			if (objectView != null)
+				ConnectToObject(objectView.ViewObject);
 		}
 	}
 }
