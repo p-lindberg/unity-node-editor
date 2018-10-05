@@ -15,12 +15,26 @@ namespace DataDesigner
 
 		public const BindingFlags StandardBindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy;
 
+		static Dictionary<KeyPair<Type, string>, Type> propertyTypes = new Dictionary<KeyPair<Type, string>, Type>();
+		static Dictionary<KeyPair<Type, string>, FieldInfo> fieldInfos = new Dictionary<KeyPair<Type, string>, FieldInfo>();
+
 		/// <summary>
 		/// Gets the property field info. For array items, will return field info of the array itself.
 		/// </summary>
 		public static FieldInfo GetPropertyFieldInfo(SerializedProperty property)
 		{
-			return GetFieldInfoViaPath(property.serializedObject.targetObject.GetType(), property.propertyPath);
+			var propertyPath = property.propertyPath;
+			var targetObjectType = property.serializedObject.targetObject.GetType();
+			var keyPair = KeyPair.From(targetObjectType, propertyPath);
+
+			FieldInfo fieldInfo;
+			if (!fieldInfos.TryGetValue(keyPair, out fieldInfo))
+			{
+				fieldInfo = GetFieldInfoViaPath(targetObjectType, propertyPath);
+				fieldInfos[keyPair] = fieldInfo;
+			}
+
+			return fieldInfo;
 		}
 
 		public static FieldInfo GetFieldInfoViaPath(this Type rootType, string path)
@@ -51,7 +65,17 @@ namespace DataDesigner
 			if (property.serializedObject.targetObject == null)
 				return null;
 
-			return GetTypeViaPath(property.serializedObject.targetObject.GetType(), property.propertyPath);
+			var propertyPath = property.propertyPath;
+			var targetObjectType = property.serializedObject.targetObject.GetType();
+			var keyPair = KeyPair.From(targetObjectType, propertyPath);
+			Type propertyType;
+			if (!propertyTypes.TryGetValue(keyPair, out propertyType))
+			{
+				propertyType = GetTypeViaPath(targetObjectType, propertyPath);
+				propertyTypes[keyPair] = propertyType;
+			}
+
+			return propertyType;
 		}
 
 		public static Type GetTypeViaPath(this Type rootType, string path)
