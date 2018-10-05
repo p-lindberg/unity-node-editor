@@ -77,9 +77,9 @@ namespace DataDesigner
 				iterator.Next(false);
 			}
 
-			if (targetPropertyName != null && targetPropertyOwner != null)
+			/*if (targetPropertyName != null && targetPropertyOwner != null)
 				if (NodeView.NodeEditor.GetOutputHandle(targetPropertyOwner, targetPropertyName) == null)
-					Disconnect();
+					Disconnect();*/
 		}
 
 		public void SetTarget(string propertyName, Type propertyType, UnityEngine.Object propertyOwner)
