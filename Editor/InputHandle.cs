@@ -28,6 +28,7 @@ namespace DataDesigner
 
 			guiStyle = new GUIStyle();
 			var background = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+			background.hideFlags = HideFlags.DontSave;
 
 			if (color == null)
 				color = nodeView.Settings.DefaultInputColor;
