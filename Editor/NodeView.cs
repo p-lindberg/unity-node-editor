@@ -356,7 +356,7 @@ namespace DataDesigner
 		bool DrawProperty(SerializedProperty iterator, int propertyDepth, int indentationDepth, bool showDisplayName = true)
 		{
 			var propertyType = NodeEditorUtilities.GetPropertyType(iterator);
-			if (IgnoreProperties.Contains(iterator.propertyPath) || propertyType.IsDefined(typeof(InputTypeAttribute), true))
+			if (IgnoreProperties.Contains(iterator.propertyPath) || propertyType.IsDefined(typeof(Input), true))
 				return iterator.NextVisible(false);
 			else if (iterator.isArray && iterator.type != "string")
 				return DrawArray(iterator, propertyDepth, indentationDepth, showDisplayName);
@@ -405,7 +405,8 @@ namespace DataDesigner
 							matchingProperty.serializedObject.ApplyModifiedProperties();
 						}
 						else
-							EditorGUILayout.SelectableLabel(ObjectNames.NicifyVariableName(property.Name), Settings.OutputStyle, GUILayout.Height(EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing));
+							EditorGUILayout.SelectableLabel(ObjectNames.NicifyVariableName(property.Name) + " (" + property.PropertyType.Name + ")",
+															Settings.OutputStyle, GUILayout.Height(EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing));
 					});
 				}
 			}
@@ -416,16 +417,16 @@ namespace DataDesigner
 			while (doContinue)
 			{
 				var serializedPropertyType = NodeEditorUtilities.GetPropertyType(iterator);
-				InputTypeAttribute inputTypeAttribute = null;
+				Input inputTypeAttribute = null;
 				if (serializedPropertyType != null)
-					inputTypeAttribute = serializedPropertyType.GetCustomAttribute(typeof(InputTypeAttribute), true) as InputTypeAttribute;
+					inputTypeAttribute = serializedPropertyType.GetCustomAttribute(typeof(Input), true) as Input;
 				if (inputTypeAttribute != null)
 				{
 					var serializedProperty = iterator.Copy();
 					inputDraws.Enqueue(() =>
 					{
 						GetInputHandle(serializedProperty, inputTypeAttribute.type, inputTypeAttribute.color).SetDrawProperties(currentPropertyHeight, true, Alignment.Left);
-						EditorGUILayout.LabelField(serializedProperty.displayName, Settings.InputStyle, GUILayout.Width(5f * serializedProperty.displayName.Length));
+						EditorGUILayout.LabelField(serializedProperty.displayName + " (" + inputTypeAttribute.type.Name + ")", Settings.InputStyle, GUILayout.Width(5f * serializedProperty.displayName.Length));
 					});
 
 					doContinue = iterator.Next(false);
@@ -742,7 +743,7 @@ namespace DataDesigner
 			while (next && iterator.depth >= depth)
 			{
 				var propertyType = NodeEditorUtilities.GetPropertyType(iterator);
-				if (propertyType != null && propertyType.IsDefined(typeof(InputTypeAttribute), true))
+				if (propertyType != null && propertyType.IsDefined(typeof(Input), true))
 				{
 					next = iterator.NextVisible(false);
 					continue;

@@ -5,14 +5,17 @@ using System;
 
 namespace DataDesigner
 {
-	public class InputTypeAttribute : Attribute
+	public class Input : Attribute
 	{
 		public readonly Type type;
 		public readonly Color? color;
 
-		public InputTypeAttribute(Type type = null, string color = null)
+		public Input(Type type = null, string color = null)
 		{
-			this.type = type;
+			if (type != null)
+				this.type = type;
+			else
+				this.type = typeof(object);
 
 			if (color != null)
 			{
