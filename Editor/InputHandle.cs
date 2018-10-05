@@ -9,23 +9,34 @@ namespace DataDesigner
 {
 	public class InputHandle : Connector, IPropertyView
 	{
-		public override GUIStyle LeftGUIStyle { get { return leftGuiStyle; } }
+		public override GUIStyle LeftGUIStyle { get { return guiStyle; } }
 
-		public override GUIStyle RightGUIStyle { get { return rightGuiStyle; } }
+		public override GUIStyle RightGUIStyle { get { return guiStyle; } }
 
 		public SerializedProperty ViewProperty { get; private set; }
 
-		GUIStyle leftGuiStyle;
-		GUIStyle rightGuiStyle;
+		GUIStyle guiStyle;
 
 		UnityEngine.Object targetPropertyOwner;
 		string targetPropertyName;
+		Type inputType;
 
-		public InputHandle(NodeView nodeView, SerializedProperty serializedProperty) : base(nodeView)
+		public InputHandle(NodeView nodeView, SerializedProperty serializedProperty, Type inputType, Color? color = null) : base(nodeView)
 		{
 			this.ViewProperty = serializedProperty;
-			leftGuiStyle = new GUIStyle(NodeEditor.Settings.DefaultNodeViewSettings.EmbeddedObjectHandleLeft);
-			rightGuiStyle = new GUIStyle(NodeEditor.Settings.DefaultNodeViewSettings.EmbeddedObjectHandle);
+			this.inputType = inputType;
+
+			guiStyle = new GUIStyle();
+			var background = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+
+			if (color == null)
+				color = nodeView.Settings.DefaultInputColor;
+
+			background.SetPixel(0, 0, color.Value);
+			background.Apply();
+			guiStyle.normal.background = background;
+			guiStyle.active.background = background;
+
 			GetTarget();
 		}
 
@@ -70,8 +81,11 @@ namespace DataDesigner
 					Disconnect();
 		}
 
-		public void SetTarget(string propertyName, UnityEngine.Object propertyOwner)
+		public void SetTarget(string propertyName, Type propertyType, UnityEngine.Object propertyOwner)
 		{
+			if (propertyType != this.inputType)
+				return;
+
 			var iterator = ViewProperty.Copy();
 			var rootDepth = iterator.depth;
 			var doContinue = iterator.Next(true);
@@ -106,12 +120,12 @@ namespace DataDesigner
 		{
 			var propertyInfoView = hitView as IReflectedPropertyView;
 			if (propertyInfoView != null)
-				SetTarget(propertyInfoView.ReflectedPropertyName, propertyInfoView.PropertyOwner);
+				SetTarget(propertyInfoView.ReflectedPropertyName, propertyInfoView.ReflectedPropertyType, propertyInfoView.PropertyOwner);
 		}
 
 		protected override void Disconnect()
 		{
-			SetTarget(null, null);
+			SetTarget(null, this.inputType, null);
 		}
 	}
 }

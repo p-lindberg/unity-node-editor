@@ -9,22 +9,34 @@ namespace DataDesigner
 {
 	public class OutputHandle : Connector, IReflectedPropertyView
 	{
-		public override GUIStyle LeftGUIStyle { get { return leftGuiStyle; } }
+		public override GUIStyle LeftGUIStyle { get { return guiStyle; } }
 
-		public override GUIStyle RightGUIStyle { get { return rightGuiStyle; } }
+		public override GUIStyle RightGUIStyle { get { return guiStyle; } }
 
 		public UnityEngine.Object PropertyOwner { get; private set; }
 
 		public string ReflectedPropertyName { get; private set; }
-		GUIStyle leftGuiStyle;
-		GUIStyle rightGuiStyle;
 
-		public OutputHandle(NodeView nodeView, UnityEngine.Object propertyOwner, string propertyName) : base(nodeView)
+		public Type ReflectedPropertyType { get; private set; }
+
+		GUIStyle guiStyle;
+
+		public OutputHandle(NodeView nodeView, UnityEngine.Object propertyOwner, string propertyName, Type reflectedPropertyType, Color? color = null) : base(nodeView)
 		{
 			this.PropertyOwner = propertyOwner;
 			this.ReflectedPropertyName = propertyName;
-			leftGuiStyle = new GUIStyle(NodeEditor.Settings.DefaultNodeViewSettings.EmbeddedObjectHandleLeft);
-			rightGuiStyle = new GUIStyle(NodeEditor.Settings.DefaultNodeViewSettings.EmbeddedObjectHandle);
+			this.ReflectedPropertyType = reflectedPropertyType;
+
+			guiStyle = new GUIStyle();
+			var background = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+
+			if (color == null)
+				color = nodeView.Settings.DefaultOutputColor;
+
+			background.SetPixel(0, 0, color.Value);
+			background.Apply();
+			guiStyle.normal.background = background;
+			guiStyle.active.background = background;
 		}
 
 		public override bool IsDead()
@@ -46,7 +58,7 @@ namespace DataDesigner
 		{
 			var inputHandle = hitView as InputHandle;
 			if (inputHandle != null)
-				inputHandle.SetTarget(ReflectedPropertyName, PropertyOwner);
+				inputHandle.SetTarget(ReflectedPropertyName, ReflectedPropertyType, PropertyOwner);
 		}
 	}
 }

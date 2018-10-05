@@ -124,27 +124,27 @@ namespace DataDesigner
 			return embeddedObjectHandle;
 		}
 
-		OutputHandle GetOutputHandle(UnityEngine.Object owner, string propertyName)
+		OutputHandle GetOutputHandle(UnityEngine.Object owner, string propertyName, Type type, Color? color = null)
 		{
 			OutputHandle outputHandle;
 			var keyPair = KeyPair.From(owner, propertyName);
 			if (outputHandles.TryGetValue(keyPair, out outputHandle))
 				return outputHandle;
 
-			outputHandle = new OutputHandle(this, owner, propertyName);
+			outputHandle = new OutputHandle(this, owner, propertyName, type, color);
 			outputHandle.OnDeath += () => postDraw += () => outputHandles.Remove(keyPair);
 			outputHandles[keyPair] = outputHandle;
 			return outputHandle;
 		}
 
-		InputHandle GetInputHandle(SerializedProperty serializedProperty)
+		InputHandle GetInputHandle(SerializedProperty serializedProperty, Type type, Color? color = null)
 		{
 			InputHandle inputHandle;
 			var keyPair = KeyPair.From(serializedProperty.serializedObject.targetObject, serializedProperty.propertyPath);
 			if (inputHandles.TryGetValue(keyPair, out inputHandle))
 				return inputHandle;
 
-			inputHandle = new InputHandle(this, serializedProperty.Copy());
+			inputHandle = new InputHandle(this, serializedProperty.Copy(), type, color);
 			inputHandle.OnDeath += () => postDraw += () => inputHandles.Remove(keyPair);
 			inputHandles[keyPair] = inputHandle;
 			return inputHandle;
@@ -377,7 +377,8 @@ namespace DataDesigner
 			Queue<Action> outputWithFieldDraws = new Queue<Action>();
 			foreach (var property in targetObjectType.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy))
 			{
-				if (property.IsDefined(typeof(OutputAttribute), true))
+				var outputAttribute = property.GetCustomAttribute(typeof(OutputAttribute), true) as OutputAttribute;
+				if (outputAttribute != null)
 				{
 					// Find a SerializedProperty with matching name.
 					SerializedProperty matchingProperty = null;
@@ -396,7 +397,7 @@ namespace DataDesigner
 
 					queue.Enqueue(() =>
 					{
-						GetOutputHandle(serializedObject.targetObject, property.Name).SetDrawProperties(currentPropertyHeight, true, Alignment.Right);
+						GetOutputHandle(serializedObject.targetObject, property.Name, property.PropertyType, outputAttribute.color).SetDrawProperties(currentPropertyHeight, true, Alignment.Right);
 						var connectionType = property.PropertyType;
 						if (matchingProperty != null)
 						{
@@ -415,12 +416,15 @@ namespace DataDesigner
 			while (doContinue)
 			{
 				var serializedPropertyType = NodeEditorUtilities.GetPropertyType(iterator);
-				if (serializedPropertyType != null && serializedPropertyType.IsDefined(typeof(InputTypeAttribute), true))
+				InputTypeAttribute inputTypeAttribute = null;
+				if (serializedPropertyType != null)
+					inputTypeAttribute = serializedPropertyType.GetCustomAttribute(typeof(InputTypeAttribute), true) as InputTypeAttribute;
+				if (inputTypeAttribute != null)
 				{
 					var serializedProperty = iterator.Copy();
 					inputDraws.Enqueue(() =>
 					{
-						GetInputHandle(serializedProperty).SetDrawProperties(currentPropertyHeight, true, Alignment.Left);
+						GetInputHandle(serializedProperty, inputTypeAttribute.type, inputTypeAttribute.color).SetDrawProperties(currentPropertyHeight, true, Alignment.Left);
 						EditorGUILayout.LabelField(serializedProperty.displayName, Settings.InputStyle, GUILayout.Width(5f * serializedProperty.displayName.Length));
 					});
 

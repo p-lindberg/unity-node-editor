@@ -837,3 +837,5 @@ MonoBehaviour:
     m_FixedHeight: 0
     m_StretchWidth: 1
     m_StretchHeight: 0
+  defaultInputColor: {r: 0.5121039, g: 0.7924528, b: 0.70225304, a: 1}
+  defaultOutputColor: {r: 0.7177413, g: 0.79607844, b: 0.5137255, a: 1}

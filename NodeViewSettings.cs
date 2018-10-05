@@ -80,4 +80,12 @@ public class NodeViewSettings : ScriptableObject
 	[SerializeField] GUIStyle inputStyle;
 
 	public GUIStyle InputStyle { get { return inputStyle; } }
+
+	[SerializeField] Color defaultInputColor;
+
+	public Color DefaultInputColor { get { return defaultInputColor; } }
+
+	[SerializeField] Color defaultOutputColor;
+
+	public Color DefaultOutputColor { get { return defaultOutputColor; } }
 }
