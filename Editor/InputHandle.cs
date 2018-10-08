@@ -66,15 +66,15 @@ namespace DataDesigner
 		{
 			var iterator = ViewProperty.Copy();
 			var rootDepth = iterator.depth;
-			iterator.Next(true);
-			while (iterator.depth > rootDepth)
+			var doContinue = iterator.Next(true);
+			while (doContinue && iterator.depth > rootDepth)
 			{
 				if (iterator.propertyType == SerializedPropertyType.ObjectReference)
 					targetPropertyOwner = iterator.objectReferenceValue;
 				else if (iterator.propertyType == SerializedPropertyType.String)
 					targetPropertyName = iterator.stringValue;
 
-				iterator.Next(false);
+				doContinue = iterator.Next(false);
 			}
 
 			/*if (targetPropertyName != null && targetPropertyOwner != null)
