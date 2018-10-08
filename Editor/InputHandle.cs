@@ -84,7 +84,7 @@ namespace DataDesigner
 
 		public void SetTarget(string propertyName, Type propertyType, UnityEngine.Object propertyOwner)
 		{
-			if (propertyType != this.inputType)
+			if (!this.inputType.IsAssignableFrom(propertyType))
 				return;
 
 			var iterator = ViewProperty.Copy();
