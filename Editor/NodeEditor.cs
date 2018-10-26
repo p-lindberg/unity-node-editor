@@ -451,7 +451,7 @@ namespace DataDesigner
 				{
 					var nodeAttribute = type.GetCustomAttributes(typeof(NodeAttribute), true).FirstOrDefault() as NodeAttribute;
 					if (nodeAttribute != null)
-						return nodeAttribute.Graphs.Contains(CurrentTarget.GetType());
+						return nodeAttribute.Graphs.FirstOrDefault(t => t == currentTarget.GetType() || CurrentTarget.GetType().IsSubclassOf(t)) != null;
 
 					return false;
 				}
