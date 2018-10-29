@@ -378,6 +378,9 @@ namespace DataDesigner
 			{
 				for (int i = 0; i < property.arraySize; i++)
 				{
+					if (property.GetArrayElementAtIndex(i).propertyType != SerializedPropertyType.ObjectReference)
+						break;
+
 					var nodeView = GetNodeView(property.GetArrayElementAtIndex(i).objectReferenceValue);
 					if (nodeView != null)
 						nodeView.DrawTag(property.displayName);
