@@ -42,7 +42,7 @@ namespace DataDesigner
 
 		public int NodeCount { get { return nodes.Count; } }
 
-		[SerializeField] UnityEngine.Object graphObject;
+		[SerializeField] UnityEngine.Object graphObject = null;
 
 #if UNITY_EDITOR
 
